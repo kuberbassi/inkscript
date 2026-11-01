@@ -598,7 +598,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             onClick={onGenerate}
             disabled={isGenerating}
           >
-            <i className="ph-bold ph-sparkle"></i>
+            <i className="ph ph-printer"></i>
             <span>
               {isGenerating
                 ? 'Rendering Vector Pages…'

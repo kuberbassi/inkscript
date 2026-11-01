@@ -81,11 +81,17 @@ export const OutputGallery: React.FC<OutputGalleryProps> = ({
         <div id="output" className="output">
           {pages.length === 0 ? (
             <div className="output-empty-state">
-              <i className="ph ph-files" style={{ fontSize: '26px', opacity: 0.45 }}></i>
-              <span>
-                Click <strong>Generate High-Res Sheet</strong> to render vector
-                handwritten pages.
-              </span>
+              <div className="output-empty-badge">
+                <i className="ph ph-stack"></i>
+              </div>
+              <div className="output-empty-text">
+                <span className="output-empty-title">No sheets rendered yet</span>
+                <span className="output-empty-sub">
+                  Configure your pen &amp; stencil settings above, then click{' '}
+                  <strong>Generate High-Res Sheet</strong> to render print-ready
+                  A4 pages.
+                </span>
+              </div>
             </div>
           ) : (
             pages.map((page, index) => (

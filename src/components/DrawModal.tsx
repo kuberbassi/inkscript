@@ -7,12 +7,20 @@ interface DrawModalProps {
   onAddImageToPaper: (dataUrl: string) => void;
 }
 
+type ModalTab = 'upload' | 'draw';
+
 export const DrawModal: React.FC<DrawModalProps> = ({
   isOpen,
   inkColor,
   onClose,
   onAddImageToPaper
 }) => {
+  const [activeTab, setActiveTab] = useState<ModalTab>('upload');
+  const [uploadedDataUrl, setUploadedDataUrl] = useState<string | null>(null);
+  const [uploadedName, setUploadedName] = useState<string>('');
+  const [invertMatchInk, setInvertMatchInk] = useState<boolean>(false);
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const isDrawingRef = useRef(false);
   const lastPosRef = useRef<{ x: number; y: number } | null>(null);
@@ -26,9 +34,82 @@ export const DrawModal: React.FC<DrawModalProps> = ({
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
     }
-  }, [isOpen]);
+  }, [isOpen, activeTab]);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
+
+  const handleFileUpload = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      if (result) {
+        setUploadedDataUrl(result);
+        setUploadedName(file.name);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+      handleFileUpload(file);
+    }
+  };
+
+  const handleInsertUploaded = () => {
+    if (!uploadedDataUrl) return;
+    if (!invertMatchInk) {
+      onAddImageToPaper(uploadedDataUrl);
+      onClose();
+      return;
+    }
+
+    // Optional: Convert dark strokes on white diagram into pen-ink-colored transparent PNG
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = img.width;
+      c.height = img.height;
+      const ctx = c.getContext('2d')!;
+      ctx.drawImage(img, 0, 0);
+
+      // Parse inkColor hex
+      const hex = inkColor.replace('#', '');
+      const rInk = parseInt(hex.substring(0, 2), 16) || 26;
+      const gInk = parseInt(hex.substring(2, 4), 16) || 47;
+      const bInk = parseInt(hex.substring(4, 6), 16) || 125;
+
+      const imgData = ctx.getImageData(0, 0, c.width, c.height);
+      const d = imgData.data;
+      for (let i = 0; i < d.length; i += 4) {
+        const lum = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+        if (lum > 235) {
+          d[i + 3] = 0; // Make white background transparent
+        } else {
+          const darkness = Math.min(1, (255 - lum) / 180);
+          d[i] = rInk;
+          d[i + 1] = gInk;
+          d[i + 2] = bInk;
+          d[i + 3] = Math.round(darkness * d[i + 3]);
+        }
+      }
+      ctx.putImageData(imgData, 0, 0);
+      onAddImageToPaper(c.toDataURL('image/png'));
+      onClose();
+    };
+    img.src = uploadedDataUrl;
+  };
 
   const getCoords = (
     e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
@@ -89,7 +170,7 @@ export const DrawModal: React.FC<DrawModalProps> = ({
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   };
 
-  const handleAddToPaper = () => {
+  const handleAddSketchToPaper = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     onAddImageToPaper(canvas.toDataURL('image/png'));
@@ -114,67 +195,185 @@ export const DrawModal: React.FC<DrawModalProps> = ({
   };
 
   return (
-    <section className="popup-container show">
-      <div className="popup">
-        <button
-          type="button"
-          className="close-button"
-          onClick={onClose}
-          aria-label="Close Draw Modal"
-        >
-          &times;
-        </button>
-        <div style={{ textAlign: 'center' }}>
-          <h3 style={{ textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            <i className="ph-bold ph-pencil-line"></i> Freehand Diagram / Sketch Pad
-          </h3>
-          <canvas
-            id="diagram-canvas"
-            ref={canvasRef}
-            width={600}
-            height={340}
-            style={{ backgroundColor: '#fff', border: '1px solid #333' }}
-            onMouseDown={startDraw}
-            onMouseMove={moveDraw}
-            onMouseUp={endDraw}
-            onMouseLeave={endDraw}
-            onTouchStart={startDraw}
-            onTouchMove={moveDraw}
-            onTouchEnd={endDraw}
-          />
-          <div
-            className="display-flex buttons-container"
-            style={{
-              justifyContent: 'center',
-              gap: '10px',
-              marginTop: '14px',
-              flexWrap: 'wrap'
-            }}
-          >
+    <div className="diagram-modal-backdrop" onClick={onClose}>
+      <div
+        className="diagram-modal-card"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="diagram-modal-header">
+          <div className="diagram-modal-tabs">
             <button
               type="button"
-              onClick={() => setStrokeWidth((w) => (w === 2 ? 3.5 : 2))}
+              className={`diagram-tab-btn ${activeTab === 'upload' ? 'active' : ''}`}
+              onClick={() => setActiveTab('upload')}
             >
-              <i className="ph-bold ph-pen-nib"></i> Stroke:{' '}
-              {strokeWidth === 2 ? 'Fine' : 'Bold'}
-            </button>
-            <button type="button" className="imp-button" onClick={handleAddToPaper}>
-              <i className="ph-bold ph-plus"></i> Add to Sheet
-            </button>
-            <button type="button" onClick={handleDownloadSketch}>
-              <i className="ph-bold ph-download-simple"></i> Download PNG
+              <i className="ph ph-image-square"></i>
+              <span>Upload Diagram / Image</span>
             </button>
             <button
               type="button"
-              className="delete-button"
-              onClick={clearCanvas}
+              className={`diagram-tab-btn ${activeTab === 'draw' ? 'active' : ''}`}
+              onClick={() => setActiveTab('draw')}
             >
-              <i className="ph-bold ph-trash"></i> Clear Canvas
+              <i className="ph ph-pencil-line"></i>
+              <span>Freehand Sketch Pad</span>
             </button>
           </div>
+
+          <button
+            type="button"
+            className="diagram-close-btn"
+            onClick={onClose}
+            aria-label="Close Modal"
+          >
+            <i className="ph ph-x"></i>
+          </button>
         </div>
+
+        {activeTab === 'upload' ? (
+          <div className="diagram-modal-body">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleFileUpload(file);
+              }}
+            />
+
+            {!uploadedDataUrl ? (
+              <div
+                className="diagram-dropzone"
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <div className="diagram-dropzone-icon">
+                  <i className="ph ph-upload-simple"></i>
+                </div>
+                <div className="diagram-dropzone-title">
+                  Click to choose a diagram or drag &amp; drop here
+                </div>
+                <div className="diagram-dropzone-sub">
+                  Supports PNG, JPG, SVG, flowcharts, circuit diagrams, or screenshots
+                </div>
+              </div>
+            ) : (
+              <div className="diagram-preview-area">
+                <img
+                  src={uploadedDataUrl}
+                  alt="Uploaded diagram preview"
+                  className="diagram-preview-img"
+                />
+                <div className="diagram-preview-meta">
+                  <span className="truncate">{uploadedName}</span>
+                  <button
+                    type="button"
+                    className="notion-chip-btn danger"
+                    onClick={() => {
+                      setUploadedDataUrl(null);
+                      setUploadedName('');
+                    }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="diagram-modal-footer">
+              <label className="diagram-ink-blend-toggle">
+                <input
+                  type="checkbox"
+                  checked={invertMatchInk}
+                  onChange={(e) => setInvertMatchInk(e.target.checked)}
+                />
+                <span>Tint diagram lines to match active Pen Ink color</span>
+              </label>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="notion-chip-btn"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <i className="ph ph-folder-open"></i>
+                  <span>Browse File</span>
+                </button>
+                <button
+                  type="button"
+                  className="button imp-button"
+                  disabled={!uploadedDataUrl}
+                  onClick={handleInsertUploaded}
+                >
+                  <i className="ph ph-plus"></i>
+                  <span>Insert into Sheet</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="diagram-modal-body">
+            <div className="diagram-canvas-wrap">
+              <canvas
+                id="diagram-canvas"
+                ref={canvasRef}
+                width={560}
+                height={300}
+                onMouseDown={startDraw}
+                onMouseMove={moveDraw}
+                onMouseUp={endDraw}
+                onMouseLeave={endDraw}
+                onTouchStart={startDraw}
+                onTouchMove={moveDraw}
+                onTouchEnd={endDraw}
+              />
+            </div>
+
+            <div className="diagram-modal-footer">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="notion-chip-btn"
+                  onClick={() => setStrokeWidth((w) => (w === 2 ? 3.5 : 2))}
+                >
+                  <i className="ph ph-pen-nib"></i>
+                  <span>Stroke: {strokeWidth === 2 ? 'Fine' : 'Bold'}</span>
+                </button>
+                <button
+                  type="button"
+                  className="notion-chip-btn danger"
+                  onClick={clearCanvas}
+                >
+                  <i className="ph ph-trash"></i>
+                  <span>Clear</span>
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="notion-chip-btn"
+                  onClick={handleDownloadSketch}
+                >
+                  <i className="ph ph-download-simple"></i>
+                  <span>Save PNG</span>
+                </button>
+                <button
+                  type="button"
+                  className="button imp-button"
+                  onClick={handleAddSketchToPaper}
+                >
+                  <i className="ph ph-plus"></i>
+                  <span>Insert Sketch</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
-    </section>
+    </div>
   );
 };
-

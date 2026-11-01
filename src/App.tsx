@@ -353,6 +353,9 @@ export const App: React.FC = () => {
 
   // Dynamic Aurora color stops synced with active Ink Color & Studio theme
   const auroraStops = useMemo(() => {
+    if (!settings.darkMode) {
+      return ['#000000', '#18181b', '#27272a'];
+    }
     const ink = settings.inkColor || '#1a2f7d';
     if (ink === '#1a1a1a') {
       return ['#3f3f46', '#71717a', '#52525b'];
@@ -361,7 +364,7 @@ export const App: React.FC = () => {
       return ['#dc2626', '#f43f5e', '#991b1b'];
     }
     return [ink, '#4f46e5', '#38bdf8'];
-  }, [settings.inkColor]);
+  }, [settings.inkColor, settings.darkMode]);
 
   const pageClassNames = [
     'page-a',
@@ -389,12 +392,9 @@ export const App: React.FC = () => {
           amplitude={0.85}
           blend={0.55}
           speed={0.75}
-          height={0.5}
-          glow={0.65}
-          brightness={settings.darkMode ? 0.65 : 0.45}
-          opacity={settings.darkMode ? 0.36 : 0.25}
+          height={0.55}
+          opacity={settings.darkMode ? 0.32 : 0.18}
           lightMode={!settings.darkMode}
-          direction="top"
           mouseInteraction
         />
       </div>
@@ -460,8 +460,8 @@ export const App: React.FC = () => {
 
                   <div className="flex items-center gap-1.5">
                     <WarmTooltip
-                      content="Open freehand sketch & diagram tool"
-                      shortcut="Draw"
+                      content="Insert diagram image or open freehand sketch pad"
+                      shortcut="Diagram"
                       side="top"
                     >
                       <button
@@ -470,8 +470,8 @@ export const App: React.FC = () => {
                         className="draw-button"
                         onClick={() => setIsDrawOpen(true)}
                       >
-                        <i className="ph ph-pencil-line"></i>
-                        <span>Draw</span>
+                        <i className="ph ph-image-square"></i>
+                        <span>Insert Diagram</span>
                       </button>
                     </WarmTooltip>
 
