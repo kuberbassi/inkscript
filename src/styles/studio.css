@@ -735,10 +735,34 @@ button:disabled {
 .paper-content ol,
 .paper-content li,
 .paper-content span,
-.paper-content font {
+.paper-content font,
+.paper-content table,
+.paper-content th,
+.paper-content td {
   margin: 0;
   line-height: inherit !important;
   font-size: inherit !important;
+}
+
+/* Handwritten Notebook Tables */
+.paper-content table.hw-table {
+  width: calc(100% - 12px);
+  margin: 6px 0;
+  border-collapse: collapse;
+  border: 1.25px solid color-mix(in srgb, var(--ink-color) 45%, transparent);
+}
+
+.paper-content table.hw-table th,
+.paper-content table.hw-table td {
+  padding: 2px 7px;
+  border: 1px solid color-mix(in srgb, var(--ink-color) 35%, transparent);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.paper-content table.hw-table th {
+  font-weight: 700;
+  border-bottom: 1.5px solid color-mix(in srgb, var(--ink-color) 52%, transparent);
 }
 
 .paper-content ul,

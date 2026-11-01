@@ -185,7 +185,43 @@ export async function renderCurrentSheetToCanvas(
     }
   }
 
-  // 5. Render All Handwritten Text Words Locked to Exact DOM Alphabetic Baseline
+  // 5. Render Handwritten Table Grid Lines
+  const tables = Array.from(
+    paperContentEl.querySelectorAll('table.hw-table, table')
+  );
+  for (const tableEl of tables) {
+    const tRect = tableEl.getBoundingClientRect();
+    const tx = tRect.left - pageRect.left;
+    const ty = tRect.top - pageRect.top;
+    const tw = tRect.width;
+    const th = tRect.height;
+
+    if (ty + th > 0 && ty < PAGE_HEIGHT && tw > 0 && th > 0) {
+      ctx.save();
+      ctx.strokeStyle = settings.inkColor;
+      ctx.globalAlpha = 0.52;
+      ctx.lineWidth = 1.15;
+
+      // Outer table border
+      ctx.strokeRect(tx, ty, tw, th);
+
+      // Inner cell borders
+      const cells = Array.from(tableEl.querySelectorAll('th, td'));
+      for (const cell of cells) {
+        const cRect = cell.getBoundingClientRect();
+        const cx = cRect.left - pageRect.left;
+        const cy = cRect.top - pageRect.top;
+        const cw = cRect.width;
+        const ch = cRect.height;
+        if (cy + ch > 0 && cy < PAGE_HEIGHT && cw > 0 && ch > 0) {
+          ctx.strokeRect(cx, cy, cw, ch);
+        }
+      }
+      ctx.restore();
+    }
+  }
+
+  // 6. Render All Handwritten Text Words Locked to Exact DOM Alphabetic Baseline
   const fontFamily = settings.customFontName
     ? `'${settings.customFontName}', cursive`
     : settings.handwritingFont;

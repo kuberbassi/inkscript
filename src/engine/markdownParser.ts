@@ -148,6 +148,27 @@ export function sanitizeRichHTMLToHandwriting(rawHTML: string): string {
         }
       } else if (tag === 'br') {
         outLines.push('');
+      } else if (tag === 'table') {
+        const rows: string[] = [];
+        const trs = Array.from(el.querySelectorAll('tr'));
+        trs.forEach((tr, rIdx) => {
+          const cells: string[] = [];
+          const thOrTds = Array.from(tr.children);
+          thOrTds.forEach((cell) => {
+            const isHeader = cell.tagName.toLowerCase() === 'th' || rIdx === 0;
+            const cellContent = processInlineNode(cell).trim();
+            const cellTag = isHeader ? 'th' : 'td';
+            cells.push(
+              `<${cellTag}>${isHeader ? `<b>${cellContent}</b>` : cellContent}</${cellTag}>`
+            );
+          });
+          if (cells.length > 0) {
+            rows.push(`<tr>${cells.join('')}</tr>`);
+          }
+        });
+        if (rows.length > 0) {
+          outLines.push(`<table class="hw-table">${rows.join('')}</table>`);
+        }
       } else {
         const content = processInlineNode(el).trim();
         if (content) outLines.push(content);
@@ -159,9 +180,66 @@ export function sanitizeRichHTMLToHandwriting(rawHTML: string): string {
   return outLines.join('<br/>');
 }
 
+function parseMarkdownTable(tableLines: string[]): string {
+  const delimIdx = tableLines.findIndex((line) =>
+    /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|?\s*$/.test(line)
+  );
+  if (delimIdx < 1) {
+    return tableLines.map(applyInlineMarkdown).join('<br/>');
+  }
+
+  const parseRow = (line: string): string[] => {
+    let clean = line.trim();
+    if (clean.startsWith('|')) clean = clean.slice(1);
+    if (clean.endsWith('|')) clean = clean.slice(0, -1);
+    return clean.split('|').map((c) => applyInlineMarkdown(c.trim()));
+  };
+
+  const headerRows = tableLines.slice(0, delimIdx);
+  const bodyRows = tableLines.slice(delimIdx + 1);
+
+  const theadHTML = headerRows
+    .map((row) => {
+      const cells = parseRow(row);
+      return `<tr>${cells.map((c) => `<th><b>${c}</b></th>`).join('')}</tr>`;
+    })
+    .join('');
+
+  const tbodyHTML = bodyRows
+    .map((row) => {
+      const cells = parseRow(row);
+      return `<tr>${cells.map((c) => `<td>${c}</td>`).join('')}</tr>`;
+    })
+    .join('');
+
+  return `<table class="hw-table">${theadHTML ? `<thead>${theadHTML}</thead>` : ''}${tbodyHTML ? `<tbody>${tbodyHTML}</tbody>` : ''}</table>`;
+}
+
 export function parsePlainMarkdownToHandwriting(rawText: string): string {
   const lines = rawText.split(/\r?\n/);
-  const formattedLines = lines.map((line) => {
+  const outChunks: string[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+    const isTableLine = line.includes('|');
+    const nextLine = i + 1 < lines.length ? lines[i + 1] : '';
+    const isDelimNext = /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|?\s*$/.test(nextLine);
+
+    if (isTableLine && isDelimNext) {
+      const tableLines: string[] = [];
+      while (
+        i < lines.length &&
+        (lines[i].includes('|') ||
+          /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|?\s*$/.test(lines[i]))
+      ) {
+        tableLines.push(lines[i]);
+        i++;
+      }
+      outChunks.push(parseMarkdownTable(tableLines));
+      continue;
+    }
+
     const l = line
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
@@ -169,17 +247,23 @@ export function parsePlainMarkdownToHandwriting(rawText: string): string {
 
     if (/^#{1,2}\s+(.+)$/.test(l)) {
       const headingText = applyInlineMarkdown(l.replace(/^#{1,2}\s+/, ''));
-      return `<div style="text-align: center;"><b><u>${headingText}</u></b></div>`;
+      outChunks.push(`<div style="text-align: center;"><b><u>${headingText}</u></b></div>`);
+      i++;
+      continue;
     }
 
     if (/^#{3,6}\s+(.+)$/.test(l)) {
       const headingText = applyInlineMarkdown(l.replace(/^#{3,6}\s+/, ''));
-      return `<div style="margin:0; padding:0;"><b><u>${headingText}</u></b></div>`;
+      outChunks.push(`<div style="margin:0; padding:0;"><b><u>${headingText}</u></b></div>`);
+      i++;
+      continue;
     }
 
     if (/^\s*[-*•]\s+(.+)$/.test(l)) {
       const bulletText = applyInlineMarkdown(l.replace(/^\s*[-*•]\s+/, ''));
-      return `<div style="margin:0; padding:0 0 0 18px; text-indent:-12px;">&bull; ${bulletText}</div>`;
+      outChunks.push(`<div style="margin:0; padding:0 0 0 18px; text-indent:-12px;">&bull; ${bulletText}</div>`);
+      i++;
+      continue;
     }
 
     if (/^\s*(\d+[.)])\s+(.+)$/.test(l)) {
@@ -189,16 +273,20 @@ export function parsePlainMarkdownToHandwriting(rawText: string): string {
         const num = match[2];
         const rest = applyInlineMarkdown(match[3]);
         if (isIndented) {
-          return `<div style="margin:0; padding:0 0 0 18px; text-indent:-14px;">${num} ${rest}</div>`;
+          outChunks.push(`<div style="margin:0; padding:0 0 0 18px; text-indent:-14px;">${num} ${rest}</div>`);
+        } else {
+          outChunks.push(`${num} ${rest}`);
         }
-        return `${num} ${rest}`;
+        i++;
+        continue;
       }
     }
 
-    return applyInlineMarkdown(l);
-  });
+    outChunks.push(applyInlineMarkdown(l));
+    i++;
+  }
 
-  return formattedLines.join('<br/>');
+  return outChunks.join('<br/>');
 }
 
 export function htmlToMarkdown(containerEl: HTMLElement): string {
@@ -231,6 +319,21 @@ export function htmlToMarkdown(containerEl: HTMLElement): string {
     }
     if (tag === 'li') {
       return `- ${inner.trim()}\n`;
+    }
+    if (tag === 'table') {
+      const trs = Array.from(el.querySelectorAll('tr'));
+      const mdRows = trs.map((tr) => {
+        const cells = Array.from(tr.querySelectorAll('th, td')).map((c) =>
+          nodeToMd(c).trim()
+        );
+        return `| ${cells.join(' | ')} |`;
+      });
+      if (mdRows.length > 0) {
+        const colCount = (trs[0]?.querySelectorAll('th, td') || []).length;
+        const delim = `| ${Array(Math.max(1, colCount)).fill('---').join(' | ')} |`;
+        const res = [mdRows[0], delim, ...mdRows.slice(1)].join('\n');
+        return `\n${res}\n`;
+      }
     }
     if (tag === 'div' || tag === 'p') {
       const align = el.style ? el.style.textAlign : '';
@@ -397,6 +500,12 @@ export function extractLogicalUnits(paperContentEl: HTMLElement): string[] {
             idx++;
           }
         });
+        return;
+      }
+
+      if (tag === 'table') {
+        flushInline(inheritedAlign, inheritedPadLeft, inheritedTextIndent);
+        units.push(`<div style="margin:0; padding:0;">${el.outerHTML}</div>`);
         return;
       }
 
