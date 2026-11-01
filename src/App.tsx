@@ -78,7 +78,16 @@ export const App: React.FC = () => {
   useEffect(() => {
     if (paperContentRef.current) {
       const savedContent = localStorage.getItem(STORAGE_KEYS.CONTENT);
-      paperContentRef.current.innerHTML = savedContent || DEFAULT_INITIAL_HTML;
+      const isLegacySkill = savedContent && savedContent.includes('Skill ');
+      if (isLegacySkill) {
+        try {
+          localStorage.setItem(STORAGE_KEYS.CONTENT, DEFAULT_INITIAL_HTML);
+        } catch {
+          // Ignore quota error
+        }
+      }
+      paperContentRef.current.innerHTML =
+        (isLegacySkill ? null : savedContent) || DEFAULT_INITIAL_HTML;
       stripInlineFontOverrides(paperContentRef.current);
     }
   }, []);
