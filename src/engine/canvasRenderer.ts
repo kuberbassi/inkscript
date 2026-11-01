@@ -175,11 +175,11 @@ export async function renderCurrentSheetToCanvas(
     ctx.restore();
   }
 
-  // 3. Crisp Vector Top & Full-Height Left Margin Lines
+  // 3. Crisp Vector Top & Full-Height Left Margin Lines (Single 1.5px stroke)
   if (settings.showMarginLine && !settings.customPaperBgUrl) {
     ctx.save();
     ctx.strokeStyle = '#f472b6';
-    ctx.lineWidth = 1.65;
+    ctx.lineWidth = 1.5;
 
     // Horizontal top margin line at y = 50
     ctx.beginPath();
@@ -189,8 +189,8 @@ export async function renderCurrentSheetToCanvas(
 
     // Vertical left margin line starting from the very top of the page (y = 0 to PAGE_HEIGHT)
     ctx.beginPath();
-    ctx.moveTo(leftMarginPos, 0);
-    ctx.lineTo(leftMarginPos, PAGE_HEIGHT);
+    ctx.moveTo(leftMarginPos + 0.75, 0);
+    ctx.lineTo(leftMarginPos + 0.75, PAGE_HEIGHT);
     ctx.stroke();
     ctx.restore();
   }

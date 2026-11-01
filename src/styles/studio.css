@@ -604,17 +604,18 @@ button:disabled {
   box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.45);
 }
 
-/* Full-height vertical pink margin line starting from the very top of the sheet (y = 0) */
-.page-a.margined::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: var(--left-margin-pos, 49px);
-  width: 1.65px;
-  background-color: #f472b6;
-  pointer-events: none;
-  z-index: 3;
+/* Full-height vertical pink margin line starting from top of .paper-content / .page-a */
+.page-a.margined {
+  background-image: linear-gradient(
+    to right,
+    transparent 0px,
+    transparent var(--left-margin-pos, 49px),
+    #f472b6 var(--left-margin-pos, 49px),
+    #f472b6 calc(var(--left-margin-pos, 49px) + 1.5px),
+    transparent calc(var(--left-margin-pos, 49px) + 1.5px)
+  );
+  background-repeat: repeat-y;
+  background-size: 100% 100%;
 }
 
 .page-a.custom-paper-bg {
@@ -661,22 +662,14 @@ button:disabled {
 
 .margined .top-margin {
   height: 50px;
-  border-bottom: 1.65px solid #f472b6;
+  border-bottom: 1.5px solid #f472b6;
   width: 100%;
   display: block;
   overflow-y: auto;
 }
 
 .margined .left-margin {
-  width: var(--left-margin-pos, 49px);
-  min-height: 100%;
-  border-right: 1.65px solid #f472b6;
-  top: 0px;
-  left: 0;
-  bottom: 0;
-  position: absolute;
-  display: block;
-  pointer-events: none;
+  display: none;
 }
 
 /* Handwritten Rich Text Styling inside .paper-content */
