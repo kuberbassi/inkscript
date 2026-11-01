@@ -3,6 +3,10 @@ import { ControlPanel } from './components/ControlPanel';
 import { DrawModal } from './components/DrawModal';
 import { OutputGallery } from './components/OutputGallery';
 import { Toolbar } from './components/Toolbar';
+import Aurora from './components/reactbits/Aurora';
+import { CallChipStatus } from './components/reactbits/CallChip';
+import ClickSpark from './components/reactbits/ClickSpark';
+import WarmTooltip, { WarmTooltipGroup } from './components/reactbits/WarmTooltip';
 import { generateHandwrittenPages } from './engine/canvasRenderer';
 import {
   htmlToMarkdown,
@@ -36,6 +40,7 @@ export const App: React.FC = () => {
 
   const [pages, setPages] = useState<GeneratedPage[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [chipStatus, setChipStatus] = useState<CallChipStatus>('idle');
   const [isDrawOpen, setIsDrawOpen] = useState(false);
 
   const pageElRef = useRef<HTMLDivElement | null>(null);
@@ -258,6 +263,11 @@ export const App: React.FC = () => {
   const handleGenerate = useCallback(async () => {
     if (!pageElRef.current || !paperContentRef.current) return;
     setIsGenerating(true);
+    setChipStatus('running');
+
+    // Allow React to paint the CallChip running state and start its live timer smoothly
+    await new Promise((r) => setTimeout(r, 120));
+
     try {
       const rendered = await generateHandwrittenPages(
         pageElRef.current,
@@ -267,6 +277,9 @@ export const App: React.FC = () => {
         exactLineHeightPx
       );
       setPages(rendered);
+      setChipStatus('done');
+    } catch {
+      setChipStatus('error');
     } finally {
       setIsGenerating(false);
     }
@@ -298,11 +311,24 @@ export const App: React.FC = () => {
 
   const handleClearAll = useCallback(() => {
     setPages([]);
+    setChipStatus('idle');
   }, []);
 
   const handleDownloadPDF = useCallback(() => {
     exportPagesToPDF(pages);
   }, [pages]);
+
+  // Dynamic Aurora color stops synced with active Ink Color & Studio theme
+  const auroraStops = useMemo(() => {
+    const ink = settings.inkColor || '#1a2f7d';
+    if (ink === '#141824') {
+      return ['#3f3f46', '#71717a', '#52525b'];
+    }
+    if (ink === '#991b1b') {
+      return ['#dc2626', '#f43f5e', '#991b1b'];
+    }
+    return [ink, '#6366f1', '#38bdf8'];
+  }, [settings.inkColor]);
 
   const pageClassNames = [
     'page-a',
@@ -314,137 +340,179 @@ export const App: React.FC = () => {
     .join(' ');
 
   return (
-    <main>
-      <header className="app-header">
-        <div>
-          <h1>Handwriting Studio</h1>
-          <p className="subtitle">
-            High-Resolution Humanized Notebook &amp; Sheet Generator (Canvas 2D
-            Vector Engine)
-          </p>
-        </div>
-        <button
-          type="button"
-          className="dark-mode-toggle"
-          aria-label="Toggle Theme"
-          title="Toggle AMOLED / Light Mode"
-          onClick={() => updateSettings({ darkMode: !settings.darkMode })}
-        >
-          {settings.darkMode ? (
-            <span className="moon" aria-hidden="true">
-              <i className="ph-bold ph-sun" style={{ fontSize: '18px' }}></i>
-            </span>
-          ) : (
-            <span className="sun" aria-hidden="true">
-              <i className="ph-bold ph-moon" style={{ fontSize: '18px' }}></i>
-            </span>
-          )}
-        </button>
-      </header>
+    <ClickSpark
+      sparkColor={settings.darkMode ? ['#ffffff', '#a1a1aa'] : ['#18181b', '#52525b']}
+      sparkSize={10}
+      sparkRadius={22}
+      sparkCount={8}
+      sparkWidth={1.6}
+      duration={420}
+      easing="ease-out"
+    >
+      {/* Top Margin Aurora Effect Synced & Optimized */}
+      <div className="aurora-top-banner" aria-hidden="true">
+        <Aurora
+          colorStops={auroraStops}
+          amplitude={0.85}
+          blend={0.55}
+          speed={0.75}
+          height={0.55}
+          glow={0.65}
+          brightness={settings.darkMode ? 0.85 : 0.65}
+          opacity={settings.darkMode ? 0.52 : 0.35}
+          lightMode={!settings.darkMode}
+          direction="top"
+          mouseInteraction
+        />
+      </div>
 
-      <section className="generate-image-section">
-        <div className="display-flex output-grid responsive-flex">
-          <div className="flex-1 page-container-super">
-            <div className="section-header-row">
-              <h2 style={{ margin: 0 }}>Live Sheet Preview</h2>
-              <button
-                type="button"
-                id="draw-diagram-button"
-                className="draw-button"
-                onClick={() => setIsDrawOpen(true)}
-              >
-                <i className="ph-bold ph-pencil-line"></i> Draw Diagram
-              </button>
+      <main className="studio-main">
+        <WarmTooltipGroup delay={300} warmWindow={400}>
+          <header className="app-header">
+            <div className="header-brand">
+              <div className="brand-badge">
+                <i className="ph-fill ph-notebook"></i>
+                <span>Studio v3.0</span>
+              </div>
+              <h1>Handwriting Studio</h1>
+              <p className="subtitle">
+                Humanized Notebook &amp; Sheet Generator · Direct Canvas 2D Vector Engine
+              </p>
             </div>
-            <p
-              style={{
-                fontSize: '0.76rem',
-                margin: '4px 0 10px 0',
-                opacity: 0.7
-              }}
-            >
-              Type, paste, or format directly on the sheet (supports Markdown{' '}
-              <code># Heading</code>, <code>* bullets</code>,{' '}
-              <code>**bold**</code>, and rich paste/copy)
-            </p>
 
-            <Toolbar
-              onCommand={handleToolbarCommand}
-              onInsert={handleToolbarInsert}
-              onHeading1={handleToolbarHeading1}
-            />
-
-            <div className="flex-1 page-container">
-              <div
-                ref={pageElRef}
-                className={pageClassNames}
-                style={{
-                  fontSize: `${settings.fontSizePt}pt`,
-                  lineHeight: `${exactLineHeightPx}px`,
-                  wordSpacing: `${settings.wordSpacingPx}px`,
-                  letterSpacing: `${settings.letterSpacingPt}pt`,
-                  backgroundImage: settings.customPaperBgUrl
-                    ? `url("${settings.customPaperBgUrl}")`
-                    : undefined
-                }}
+            <div className="header-actions">
+              <WarmTooltip
+                content={settings.darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                shortcut="Theme"
+                side="bottom"
               >
-                <div contentEditable suppressContentEditableWarning className="top-margin" />
-                <div
-                  ref={containerRef}
-                  className="display-flex left-margin-and-content"
+                <button
+                  type="button"
+                  className="dark-mode-toggle"
+                  aria-label="Toggle Theme"
+                  onClick={() => updateSettings({ darkMode: !settings.darkMode })}
                 >
+                  {settings.darkMode ? (
+                    <i className="ph ph-sun" style={{ fontSize: '17px' }}></i>
+                  ) : (
+                    <i className="ph ph-moon" style={{ fontSize: '17px' }}></i>
+                  )}
+                </button>
+              </WarmTooltip>
+            </div>
+          </header>
+
+          <section className="generate-image-section">
+            <div className="display-flex output-grid responsive-flex">
+              <div className="flex-1 page-container-super">
+                <div className="section-header-row">
+                  <div className="flex items-center gap-2">
+                    <h2 style={{ margin: 0 }}>Sheet Canvas</h2>
+                    <span className="sheet-live-pill">Live</span>
+                  </div>
+                  <WarmTooltip
+                    content="Open freehand sketch & diagram tool"
+                    shortcut="Draw"
+                    side="top"
+                  >
+                    <button
+                      type="button"
+                      id="draw-diagram-button"
+                      className="draw-button"
+                      onClick={() => setIsDrawOpen(true)}
+                    >
+                      <i className="ph ph-pencil-line"></i>
+                      <span>Draw Diagram</span>
+                    </button>
+                  </WarmTooltip>
+                </div>
+
+                <Toolbar
+                  onCommand={handleToolbarCommand}
+                  onInsert={handleToolbarInsert}
+                  onHeading1={handleToolbarHeading1}
+                />
+
+                <div className="flex-1 page-container">
                   <div
-                    contentEditable
-                    suppressContentEditableWarning
-                    className="left-margin"
-                  />
-                  <div
-                    ref={paperContentRef}
-                    id="note"
-                    className="paper-content"
-                    contentEditable
-                    suppressContentEditableWarning
+                    ref={pageElRef}
+                    className={pageClassNames}
                     style={{
-                      paddingTop: `${settings.topPaddingPx}px`,
-                      paddingLeft: `${settings.leftPaddingPx}px`
+                      fontSize: `${settings.fontSizePt}pt`,
+                      lineHeight: `${exactLineHeightPx}px`,
+                      wordSpacing: `${settings.wordSpacingPx}px`,
+                      letterSpacing: `${settings.letterSpacingPt}pt`,
+                      backgroundImage: settings.customPaperBgUrl
+                        ? `url("${settings.customPaperBgUrl}")`
+                        : undefined
                     }}
-                    onInput={saveEditorContent}
-                    onPaste={handlePaste}
-                    onCopy={handleCopy}
-                  />
+                  >
+                    <div
+                      contentEditable
+                      suppressContentEditableWarning
+                      className="top-margin"
+                    />
+                    <div
+                      ref={containerRef}
+                      className="display-flex left-margin-and-content"
+                    >
+                      <div
+                        contentEditable
+                        suppressContentEditableWarning
+                        className="left-margin"
+                      />
+                      <div
+                        ref={paperContentRef}
+                        id="note"
+                        className="paper-content"
+                        contentEditable
+                        suppressContentEditableWarning
+                        style={{
+                          paddingTop: `${settings.topPaddingPx}px`,
+                          paddingLeft: `${settings.leftPaddingPx}px`
+                        }}
+                        onInput={saveEditorContent}
+                        onPaste={handlePaste}
+                        onCopy={handleCopy}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
+
+              <ControlPanel
+                settings={settings}
+                isGenerating={isGenerating}
+                chipStatus={chipStatus}
+                pageCount={pages.length}
+                onUpdate={updateSettings}
+                onPresetChange={handlePresetChange}
+                onUploadFont={handleUploadFont}
+                onUploadPaperBg={handleUploadPaperBg}
+                onClearPaperBg={handleClearPaperBg}
+                onGenerate={handleGenerate}
+              />
             </div>
-          </div>
+          </section>
+        </WarmTooltipGroup>
 
-          <ControlPanel
-            settings={settings}
-            isGenerating={isGenerating}
-            onUpdate={updateSettings}
-            onPresetChange={handlePresetChange}
-            onUploadFont={handleUploadFont}
-            onUploadPaperBg={handleUploadPaperBg}
-            onClearPaperBg={handleClearPaperBg}
-            onGenerate={handleGenerate}
-          />
-        </div>
-      </section>
+        <OutputGallery
+          pages={pages}
+          darkMode={settings.darkMode}
+          onRemovePage={handleRemovePage}
+          onMoveLeft={handleMoveLeft}
+          onMoveRight={handleMoveRight}
+          onClearAll={handleClearAll}
+          onDownloadPDF={handleDownloadPDF}
+        />
 
-      <OutputGallery
-        pages={pages}
-        onRemovePage={handleRemovePage}
-        onMoveLeft={handleMoveLeft}
-        onMoveRight={handleMoveRight}
-        onClearAll={handleClearAll}
-        onDownloadPDF={handleDownloadPDF}
-      />
-
-      <DrawModal
-        isOpen={isDrawOpen}
-        inkColor={settings.inkColor}
-        onClose={() => setIsDrawOpen(false)}
-        onAddImageToPaper={handleAddSketchToPaper}
-      />
-    </main>
+        <DrawModal
+          isOpen={isDrawOpen}
+          inkColor={settings.inkColor}
+          onClose={() => setIsDrawOpen(false)}
+          onAddImageToPaper={handleAddSketchToPaper}
+        />
+      </main>
+    </ClickSpark>
   );
 };

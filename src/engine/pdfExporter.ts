@@ -36,3 +36,4 @@ export function exportPagesToPDF(pages: GeneratedPage[]): void {
 
   doc.save('handwritten-sheet.pdf');
 }
+

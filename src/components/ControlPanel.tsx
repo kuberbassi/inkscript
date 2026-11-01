@@ -1,5 +1,6 @@
-import React, { useRef } from 'react';
+import React, { useMemo, useRef } from 'react';
 import {
+  DEFAULT_SETTINGS,
   HANDWRITING_FONTS,
   INK_COLOR_PRESETS,
   PageSurfaceEffect,
@@ -7,10 +8,16 @@ import {
   SheetPreset,
   StudioSettings
 } from '../types/studio';
+import CallChip, { CallChipStatus } from './reactbits/CallChip';
+import GlideSelect, { GlideSelectOption } from './reactbits/GlideSelect';
+import ScrubField from './reactbits/ScrubField';
+import WarmTooltip, { WarmTooltipGroup } from './reactbits/WarmTooltip';
 
 interface ControlPanelProps {
   settings: StudioSettings;
   isGenerating: boolean;
+  chipStatus: CallChipStatus;
+  pageCount: number;
   onUpdate: (partial: Partial<StudioSettings>) => void;
   onPresetChange: (preset: SheetPreset) => void;
   onUploadFont: (file: File) => void;
@@ -22,6 +29,8 @@ interface ControlPanelProps {
 export const ControlPanel: React.FC<ControlPanelProps> = ({
   settings,
   isGenerating,
+  chipStatus,
+  pageCount,
   onUpdate,
   onPresetChange,
   onUploadFont,
@@ -30,6 +39,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   onGenerate
 }) => {
   const paperFileInputRef = useRef<HTMLInputElement | null>(null);
+  const fontFileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handlePaperFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -49,376 +59,577 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
     onUpdate({ realismSeed: Math.floor(Math.random() * 900000) + 10000 });
   };
 
+  const handleResetAll = () => {
+    onUpdate({
+      ...DEFAULT_SETTINGS,
+      darkMode: settings.darkMode
+    });
+  };
+
+  const fontOptions: GlideSelectOption[] = useMemo(
+    () =>
+      HANDWRITING_FONTS.map((f) => ({
+        value: f.value,
+        label: (
+          <span style={{ fontFamily: f.previewFont, fontSize: '14px' }}>
+            {f.label}
+          </span>
+        )
+      })),
+    []
+  );
+
+  const inkOptions: GlideSelectOption[] = useMemo(
+    () =>
+      INK_COLOR_PRESETS.map((ink) => ({
+        value: ink.value,
+        label: (
+          <span className="inline-flex items-center gap-2">
+            <span
+              className="inline-block h-3 w-3 rounded-[4px] border border-white/20"
+              style={{ backgroundColor: ink.value }}
+            />
+            <span>{ink.label}</span>
+          </span>
+        ),
+        tag: ink.value
+      })),
+    []
+  );
+
+  const realismOptions: GlideSelectOption[] = useMemo(
+    () =>
+      REALISM_PRESETS.map((p) => ({
+        value: String(p.value),
+        label: p.label,
+        tag: p.value === 0 ? '0%' : `${Math.round(p.value * 100)}%`
+      })),
+    []
+  );
+
+  const surfaceOptions: GlideSelectOption[] = useMemo(
+    () => [
+      {
+        value: 'no-effect',
+        label: 'Clean White Sheet',
+        tag: 'Print'
+      },
+      {
+        value: 'shadows',
+        label: 'Soft Vignette Shadow',
+        tag: 'Depth'
+      },
+      {
+        value: 'scanner',
+        label: 'High-Contrast Scanner',
+        tag: 'Scan'
+      }
+    ],
+    []
+  );
+
+  const resolutionOptions: GlideSelectOption[] = useMemo(
+    () => [
+      { value: '2', label: 'Standard', tag: '2×' },
+      { value: '3', label: 'High', tag: '3×' },
+      { value: '4', label: 'Very High', tag: '4×' },
+      { value: '5', label: 'Ultra High (300 DPI)', tag: '5×' },
+      { value: '6', label: 'Maximum Quality', tag: '6×' }
+    ],
+    []
+  );
+
+  const presetOptions: GlideSelectOption[] = useMemo(
+    () => [
+      {
+        value: 'default',
+        label: 'Standard Ruled Notebook',
+        tag: 'Ruled'
+      },
+      {
+        value: 'blank',
+        label: 'Plain Blank White Sheet',
+        tag: 'Blank'
+      }
+    ],
+    []
+  );
+
+  const pageSizeOptions: GlideSelectOption[] = useMemo(
+    () => [
+      {
+        value: 'a4',
+        label: 'A4 Sheet',
+        tag: '210×297mm'
+      }
+    ],
+    []
+  );
+
+  const surfaceChip = settings.darkMode ? '#27272a' : '#e4e4e7';
+  const highlightChip = settings.darkMode ? '#3f3f46' : '#d4d4d8';
+  const textChip = settings.darkMode ? '#f4f4f5' : '#18181b';
+  const accentChip = settings.darkMode ? '#f4f4f5' : '#18181b';
+
   return (
-    <div className="customization-col">
-      <div style={{ padding: '0px 0px 8px 0px' }}>
-        <h2 style={{ margin: '0 0 4px 0' }}>
-          <i className="ph-bold ph-sliders-horizontal"></i> Sheet &amp; Pen
-          Settings
-        </h2>
-        <p style={{ fontSize: '0.78rem', margin: 0, opacity: 0.75 }}>
-          Direct Canvas 2D vector engine &amp; human realism apply automatically
-          with zero line-height drift.
-        </p>
-      </div>
-
-      {/* 1. Handwriting Font */}
-      <fieldset>
-        <legend>
-          <i className="ph-bold ph-pen"></i> Handwriting Style
-        </legend>
-
-        <div className="category-grid">
-          <div>
-            <label className="block" htmlFor="handwriting-font">
-              Select Handwriting Font
-            </label>
-            <select
-              id="handwriting-font"
-              value={settings.handwritingFont}
-              onChange={(e) =>
-                onUpdate({
-                  handwritingFont: e.target.value,
-                  customFontName: null
-                })
-              }
-            >
-              {HANDWRITING_FONTS.map((f) => (
-                <option
-                  key={f.value}
-                  value={f.value}
-                  style={{ fontFamily: f.previewFont, fontSize: '13pt' }}
-                >
-                  {f.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="upload-handwriting-container">
-            <label className="block" htmlFor="font-file">
-              Custom Font (.ttf / .otf)
-            </label>
-            <input
-              accept=".ttf, .otf"
-              type="file"
-              id="font-file"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) onUploadFont(file);
-              }}
-            />
-          </div>
-        </div>
-      </fieldset>
-
-      {/* 2. Pen, Realism & Print Quality */}
-      <fieldset>
-        <legend>
-          <i className="ph-bold ph-drop"></i> Pen, Realism &amp; Print Quality
-        </legend>
-
-        <div className="category-grid">
-          <div className="postfix-input" data-postfix="pt">
-            <label htmlFor="font-size">Font Size</label>
-            <input
-              id="font-size"
-              min={6}
-              max={30}
-              step={0.5}
-              value={settings.fontSizePt}
-              type="number"
-              onChange={(e) =>
-                onUpdate({ fontSizePt: Number(e.target.value) || 11 })
-              }
-            />
-          </div>
-          <div>
-            <label className="block" htmlFor="ink-color">
-              Ink Color
-            </label>
-            <select
-              id="ink-color"
-              value={settings.inkColor}
-              onChange={(e) => onUpdate({ inkColor: e.target.value })}
-            >
-              {INK_COLOR_PRESETS.map((ink) => (
-                <option key={ink.value} value={ink.value}>
-                  {ink.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                paddingBottom: '5px'
-              }}
-            >
-              <label htmlFor="human-realism">Human Realism</label>
-              <button
-                type="button"
-                className="seed-button"
-                onClick={handleRerollSeed}
-                title={`Re-roll handwriting variation seed (Current: #${settings.realismSeed})`}
-              >
-                <i className="ph-bold ph-dice-five"></i> Re-Roll
-              </button>
+    <WarmTooltipGroup delay={300} warmWindow={400}>
+      <div className="customization-col">
+        {/* Card 1: Pen, Realism & Print Customize */}
+        <div className="customizer-card">
+          <div className="customizer-card-header">
+            <div className="customizer-card-title">
+              <i className="ph ph-pen-nib"></i>
+              <span>Customize Pen &amp; Realism</span>
             </div>
-            <select
-              id="human-realism"
-              value={settings.realismIntensity}
-              onChange={(e) =>
-                onUpdate({ realismIntensity: Number(e.target.value) })
-              }
-            >
-              {REALISM_PRESETS.map((p) => (
-                <option key={p.value} value={p.value}>
-                  {p.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <div className="category-grid" style={{ marginTop: '12px' }}>
-          <div>
-            <label className="block" htmlFor="page-size">
-              Page Size
-            </label>
-            <select id="page-size" value={settings.pageSize} disabled>
-              <option value="a4">A4 Sheet (210 × 297 mm)</option>
-            </select>
-          </div>
-          <div>
-            <label className="block" htmlFor="page-effects">
-              Page Surface
-            </label>
-            <select
-              id="page-effects"
-              value={settings.pageEffect}
-              onChange={(e) =>
-                onUpdate({ pageEffect: e.target.value as PageSurfaceEffect })
-              }
-            >
-              <option value="no-effect">Clean White Sheet (Print Ready)</option>
-              <option value="shadows">Soft Vignette Shadow</option>
-              <option value="scanner">High-Contrast Scanner</option>
-            </select>
-          </div>
-          <div>
-            <label className="block" htmlFor="resolution">
-              Export Resolution
-            </label>
-            <select
-              id="resolution"
-              value={settings.exportScale}
-              onChange={(e) =>
-                onUpdate({ exportScale: Number(e.target.value) || 4 })
-              }
-            >
-              <option value={2}>Standard (2x)</option>
-              <option value={3}>High (3x)</option>
-              <option value={4}>Very High (4x)</option>
-              <option value={5}>Ultra High (300 DPI Print)</option>
-              <option value={6}>Maximum Quality (6x)</option>
-            </select>
-          </div>
-        </div>
-      </fieldset>
-
-      {/* 3. Alignment & Spacing */}
-      <fieldset>
-        <legend>
-          <i className="ph-bold ph-arrows-out-line-vertical"></i> Alignment
-          &amp; Spacing
-        </legend>
-
-        <div className="category-grid">
-          <div className="postfix-input" data-postfix="em">
-            <label htmlFor="line-height">Line Height</label>
-            <input
-              id="line-height"
-              min={0.8}
-              max={3.5}
-              step={0.05}
-              value={settings.lineHeightEm}
-              type="number"
-              onChange={(e) =>
-                onUpdate({ lineHeightEm: Number(e.target.value) || 1.45 })
-              }
-            />
-          </div>
-          <div className="postfix-input" data-postfix="px">
-            <label htmlFor="top-padding">Top Padding</label>
-            <input
-              id="top-padding"
-              min={0}
-              value={settings.topPaddingPx}
-              type="number"
-              onChange={(e) =>
-                onUpdate({ topPaddingPx: Number(e.target.value) || 0 })
-              }
-            />
-          </div>
-          <div className="postfix-input" data-postfix="px">
-            <label htmlFor="left-padding">Left Offset</label>
-            <input
-              id="left-padding"
-              min={0}
-              value={settings.leftPaddingPx}
-              type="number"
-              onChange={(e) =>
-                onUpdate({ leftPaddingPx: Number(e.target.value) || 0 })
-              }
-            />
-          </div>
-          <div className="postfix-input" data-postfix="px">
-            <label htmlFor="word-spacing">Word Spacing</label>
-            <input
-              id="word-spacing"
-              min={-10}
-              max={100}
-              value={settings.wordSpacingPx}
-              type="number"
-              onChange={(e) =>
-                onUpdate({ wordSpacingPx: Number(e.target.value) || 0 })
-              }
-            />
-          </div>
-          <div className="postfix-input" data-postfix="pt">
-            <label htmlFor="letter-spacing">Letter Spacing</label>
-            <input
-              id="letter-spacing"
-              min={-5}
-              max={40}
-              step={0.5}
-              value={settings.letterSpacingPt}
-              type="number"
-              onChange={(e) =>
-                onUpdate({ letterSpacingPt: Number(e.target.value) || 0 })
-              }
-            />
-          </div>
-        </div>
-      </fieldset>
-
-      {/* 4. Paper Lines & Sheet Template */}
-      <fieldset>
-        <legend>
-          <i className="ph-bold ph-files"></i> Paper Lines &amp; Sheet Template
-        </legend>
-
-        <div className="category-grid" style={{ marginBottom: '12px' }}>
-          <div>
-            <label className="block" htmlFor="paper-stencil-preset">
-              Sheet Background Preset
-            </label>
-            <select
-              id="paper-stencil-preset"
-              value={settings.sheetPreset}
-              onChange={(e) => onPresetChange(e.target.value as SheetPreset)}
-            >
-              <option value="default">
-                Standard Notebook (Adjustable Lines)
-              </option>
-              <option value="blank">Plain Blank White Sheet</option>
-            </select>
-          </div>
-          <div className="upload-paper-container">
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}
-            >
-              <label className="block" htmlFor="paper-file">
-                Or Upload Custom Sheet Image
-              </label>
-              {settings.customPaperBgUrl && (
+            <div className="flex items-center gap-2">
+              <WarmTooltip
+                content={`Re-roll variation seed (#${settings.realismSeed})`}
+                shortcut="Seed"
+                side="top"
+              >
                 <button
                   type="button"
-                  id="clear-paper-file"
-                  className="reset-bg-button"
-                  onClick={handleClearPaper}
+                  className="customizer-reset-btn"
+                  onClick={handleRerollSeed}
                 >
-                  Reset BG
+                  <i className="ph ph-dice-five"></i>
+                  <span>Re-Roll</span>
                 </button>
-              )}
+              </WarmTooltip>
+              <WarmTooltip content="Reset all parameters to defaults" side="top">
+                <button
+                  type="button"
+                  className="customizer-reset-btn"
+                  onClick={handleResetAll}
+                >
+                  <i className="ph ph-arrow-counter-clockwise"></i>
+                  <span>Reset</span>
+                </button>
+              </WarmTooltip>
             </div>
-            <input
-              ref={paperFileInputRef}
-              accept=".jpg, .jpeg, .png"
-              type="file"
-              id="paper-file"
-              onChange={handlePaperFileChange}
+          </div>
+
+          <div className="customizer-card-body">
+            {/* Row 1: Font & Ink & Realism */}
+            <div className="customizer-grid-3">
+              <div className="prop-cell">
+                <span className="prop-label">Font</span>
+                <div className="prop-control">
+                  <GlideSelect
+                    options={fontOptions}
+                    value={settings.handwritingFont}
+                    onChange={(val) =>
+                      onUpdate({ handwritingFont: val, customFontName: null })
+                    }
+                    surfaceColor={surfaceChip}
+                    highlightColor={highlightChip}
+                    textColor={textChip}
+                    accentColor={accentChip}
+                    size="sm"
+                    radius={8}
+                    menuWidth={240}
+                    align="right"
+                    ariaLabel="Select Handwriting Font"
+                  />
+                </div>
+              </div>
+
+              <div className="prop-cell">
+                <span className="prop-label">Ink</span>
+                <div className="prop-control">
+                  <GlideSelect
+                    options={inkOptions}
+                    value={settings.inkColor}
+                    onChange={(val) => onUpdate({ inkColor: val })}
+                    surfaceColor={surfaceChip}
+                    highlightColor={highlightChip}
+                    textColor={textChip}
+                    accentColor={accentChip}
+                    size="sm"
+                    radius={8}
+                    menuWidth={230}
+                    align="right"
+                    ariaLabel="Select Ink Color"
+                  />
+                </div>
+              </div>
+
+              <div className="prop-cell">
+                <span className="prop-label">Realism</span>
+                <div className="prop-control">
+                  <GlideSelect
+                    options={realismOptions}
+                    value={String(settings.realismIntensity)}
+                    onChange={(val) =>
+                      onUpdate({ realismIntensity: Number(val) })
+                    }
+                    surfaceColor={surfaceChip}
+                    highlightColor={highlightChip}
+                    textColor={textChip}
+                    accentColor={accentChip}
+                    size="sm"
+                    radius={8}
+                    menuWidth={245}
+                    align="right"
+                    ariaLabel="Select Human Realism"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Row 2: Surface, Resolution, Page Size */}
+            <div className="customizer-grid-3">
+              <div className="prop-cell">
+                <span className="prop-label">Surface</span>
+                <div className="prop-control">
+                  <GlideSelect
+                    options={surfaceOptions}
+                    value={settings.pageEffect}
+                    onChange={(val) =>
+                      onUpdate({ pageEffect: val as PageSurfaceEffect })
+                    }
+                    surfaceColor={surfaceChip}
+                    highlightColor={highlightChip}
+                    textColor={textChip}
+                    accentColor={accentChip}
+                    size="sm"
+                    radius={8}
+                    menuWidth={220}
+                    align="right"
+                    ariaLabel="Select Page Surface"
+                  />
+                </div>
+              </div>
+
+              <div className="prop-cell">
+                <span className="prop-label">Scale</span>
+                <div className="prop-control">
+                  <GlideSelect
+                    options={resolutionOptions}
+                    value={String(settings.exportScale)}
+                    onChange={(val) =>
+                      onUpdate({ exportScale: Number(val) || 4 })
+                    }
+                    surfaceColor={surfaceChip}
+                    highlightColor={highlightChip}
+                    textColor={textChip}
+                    accentColor={accentChip}
+                    size="sm"
+                    radius={8}
+                    menuWidth={220}
+                    align="right"
+                    ariaLabel="Select Export Resolution"
+                  />
+                </div>
+              </div>
+
+              <div className="prop-cell">
+                <span className="prop-label">Format</span>
+                <div className="prop-control">
+                  <GlideSelect
+                    options={pageSizeOptions}
+                    value={settings.pageSize}
+                    disabled
+                    surfaceColor={surfaceChip}
+                    highlightColor={highlightChip}
+                    textColor={textChip}
+                    accentColor={accentChip}
+                    size="sm"
+                    radius={8}
+                    menuWidth={180}
+                    align="right"
+                    ariaLabel="Page Size"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 2: ScrubField Numeric Customizer (Drag to Scrub / Click to Type) */}
+        <div className="customizer-card">
+          <div className="customizer-card-header">
+            <div className="customizer-card-title">
+              <i className="ph ph-sliders-horizontal"></i>
+              <span>Typography &amp; Baseline Geometry</span>
+            </div>
+            <span className="customizer-badge">Drag to scrub · Click to type</span>
+          </div>
+
+          <div className="customizer-card-body">
+            <div className="customizer-grid-3">
+              <ScrubField
+                label="Font Size"
+                suffix="pt"
+                value={settings.fontSizePt}
+                defaultValue={DEFAULT_SETTINGS.fontSizePt}
+                min={6}
+                max={28}
+                step={0.5}
+                sensitivity={3}
+                size="md"
+                fullWidth
+                accent={accentChip}
+                chipColor={surfaceChip}
+                onChange={(v) => onUpdate({ fontSizePt: v })}
+              />
+
+              <ScrubField
+                label="Line Height"
+                suffix="em"
+                value={settings.lineHeightEm}
+                defaultValue={DEFAULT_SETTINGS.lineHeightEm}
+                min={0.9}
+                max={3.0}
+                step={0.05}
+                sensitivity={4}
+                size="md"
+                fullWidth
+                accent={accentChip}
+                chipColor={surfaceChip}
+                onChange={(v) => onUpdate({ lineHeightEm: v })}
+              />
+
+              <ScrubField
+                label="Top Pad"
+                suffix="px"
+                value={settings.topPaddingPx}
+                defaultValue={DEFAULT_SETTINGS.topPaddingPx}
+                min={0}
+                max={120}
+                step={1}
+                sensitivity={2}
+                size="md"
+                fullWidth
+                accent={accentChip}
+                chipColor={surfaceChip}
+                onChange={(v) => onUpdate({ topPaddingPx: v })}
+              />
+            </div>
+
+            <div className="customizer-grid-3">
+              <ScrubField
+                label="Left Offset"
+                suffix="px"
+                value={settings.leftPaddingPx}
+                defaultValue={DEFAULT_SETTINGS.leftPaddingPx}
+                min={0}
+                max={140}
+                step={1}
+                sensitivity={2}
+                size="md"
+                fullWidth
+                accent={accentChip}
+                chipColor={surfaceChip}
+                onChange={(v) => onUpdate({ leftPaddingPx: v })}
+              />
+
+              <ScrubField
+                label="Word Gap"
+                suffix="px"
+                value={settings.wordSpacingPx}
+                defaultValue={DEFAULT_SETTINGS.wordSpacingPx}
+                min={-6}
+                max={40}
+                step={0.5}
+                sensitivity={3}
+                size="md"
+                fullWidth
+                accent={accentChip}
+                chipColor={surfaceChip}
+                onChange={(v) => onUpdate({ wordSpacingPx: v })}
+              />
+
+              <ScrubField
+                label="Letter Gap"
+                suffix="pt"
+                value={settings.letterSpacingPt}
+                defaultValue={DEFAULT_SETTINGS.letterSpacingPt}
+                min={-3}
+                max={20}
+                step={0.25}
+                sensitivity={4}
+                size="md"
+                fullWidth
+                accent={accentChip}
+                chipColor={surfaceChip}
+                onChange={(v) => onUpdate({ letterSpacingPt: v })}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Card 3: Sheet Template, Lines & Custom Assets */}
+        <div className="customizer-card">
+          <div className="customizer-card-header">
+            <div className="customizer-card-title">
+              <i className="ph ph-notebook"></i>
+              <span>Sheet Template &amp; Assets</span>
+            </div>
+          </div>
+
+          <div className="customizer-card-body">
+            <div className="customizer-grid-3">
+              <div className="prop-cell">
+                <span className="prop-label">Template</span>
+                <div className="prop-control">
+                  <GlideSelect
+                    options={presetOptions}
+                    value={settings.sheetPreset}
+                    onChange={(val) => onPresetChange(val as SheetPreset)}
+                    surfaceColor={surfaceChip}
+                    highlightColor={highlightChip}
+                    textColor={textChip}
+                    accentColor={accentChip}
+                    size="sm"
+                    radius={8}
+                    menuWidth={230}
+                    align="right"
+                    ariaLabel="Select Sheet Preset"
+                  />
+                </div>
+              </div>
+
+              <div className="prop-cell">
+                <span className="prop-label">Margin Line</span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={settings.showMarginLine}
+                  className="notion-switch"
+                  data-checked={settings.showMarginLine ? 'true' : 'false'}
+                  onClick={() =>
+                    onUpdate({ showMarginLine: !settings.showMarginLine })
+                  }
+                >
+                  <span className="notion-switch-thumb" />
+                </button>
+              </div>
+
+              <div className="prop-cell">
+                <span className="prop-label">Ruled Lines</span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={settings.showRuledLines}
+                  className="notion-switch"
+                  data-checked={settings.showRuledLines ? 'true' : 'false'}
+                  onClick={() =>
+                    onUpdate({ showRuledLines: !settings.showRuledLines })
+                  }
+                >
+                  <span className="notion-switch-thumb" />
+                </button>
+              </div>
+            </div>
+
+            <div className="customizer-grid-2">
+              <div className="prop-cell">
+                <span className="prop-label">Custom Font (.ttf/.otf)</span>
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={fontFileInputRef}
+                    accept=".ttf, .otf"
+                    type="file"
+                    id="font-file"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) onUploadFont(file);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="notion-chip-btn"
+                    onClick={() => fontFileInputRef.current?.click()}
+                  >
+                    <i className="ph ph-upload-simple"></i>
+                    <span>
+                      {settings.customFontName ? 'Loaded Custom' : 'Upload Font'}
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="prop-cell">
+                <span className="prop-label">Custom Sheet Scan</span>
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={paperFileInputRef}
+                    accept=".jpg, .jpeg, .png"
+                    type="file"
+                    id="paper-file"
+                    className="hidden"
+                    onChange={handlePaperFileChange}
+                  />
+                  {settings.customPaperBgUrl && (
+                    <button
+                      type="button"
+                      className="notion-chip-btn danger"
+                      onClick={handleClearPaper}
+                    >
+                      Reset
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="notion-chip-btn"
+                    onClick={() => paperFileInputRef.current?.click()}
+                  >
+                    <i className="ph ph-image"></i>
+                    <span>
+                      {settings.customPaperBgUrl ? 'Change BG' : 'Upload Image'}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Action Row: Generate High-Res Sheet + Live CallChip */}
+        <div className="generate-action-bar">
+          <button
+            type="button"
+            data-testid="generate-image-button"
+            className="button generate-image-button"
+            onClick={onGenerate}
+            disabled={isGenerating}
+          >
+            <i className="ph-bold ph-sparkle"></i>
+            <span>
+              {isGenerating
+                ? 'Rendering Vector Pages…'
+                : 'Generate High-Res Sheet'}
+            </span>
+          </button>
+
+          {chipStatus !== 'idle' && (
+            <CallChip
+              icon="edit"
+              name="canvas2d"
+              argument={
+                chipStatus === 'running'
+                  ? `rendering @ ${settings.exportScale}×`
+                  : `${pageCount} ${pageCount === 1 ? 'sheet' : 'sheets'} @ ${settings.exportScale}×`
+              }
+              status={chipStatus}
+              expectedMs={420}
+              size={38}
+              radius={10}
+              surfaceColor={settings.darkMode ? '#18181b' : '#e4e4e7'}
+              color={settings.darkMode ? '#f4f4f5' : '#18181b'}
+              progressColor={settings.darkMode ? '#f4f4f5' : '#18181b'}
+              progressOpacity={0.12}
+              doneColor="#22c55e"
+              errorColor="#ef4444"
+              washOpacity={0.16}
+              showTimer
+              onRetry={onGenerate}
             />
-          </div>
+          )}
         </div>
-
-        <div className="category-grid" style={{ alignItems: 'center' }}>
-          <div>
-            <label htmlFor="paper-margin-toggle">
-              CSS Margin Line:{' '}
-              <span aria-label="paper margin status" className="status">
-                {settings.showMarginLine ? 'on' : 'off'}
-              </span>
-            </label>
-            <label className="switch-toggle outer">
-              <input
-                aria-checked={settings.showMarginLine}
-                checked={settings.showMarginLine}
-                aria-label="Paper Margin Button"
-                id="paper-margin-toggle"
-                type="checkbox"
-                onChange={(e) =>
-                  onUpdate({ showMarginLine: e.target.checked })
-                }
-              />
-              <div></div>
-            </label>
-          </div>
-
-          <div>
-            <label htmlFor="paper-line-toggle">
-              CSS Ruled Lines:{' '}
-              <span aria-label="paper line status" className="status">
-                {settings.showRuledLines ? 'on' : 'off'}
-              </span>
-            </label>
-            <label className="switch-toggle outer">
-              <input
-                aria-checked={settings.showRuledLines}
-                checked={settings.showRuledLines}
-                aria-label="Paper Line Button"
-                id="paper-line-toggle"
-                type="checkbox"
-                onChange={(e) => onUpdate({ showRuledLines: e.target.checked })}
-              />
-              <div></div>
-            </label>
-          </div>
-        </div>
-      </fieldset>
-
-      {/* 5. Generate Button */}
-      <div style={{ textAlign: 'center', padding: '24px 0px 10px 0px' }}>
-        <button
-          type="button"
-          data-testid="generate-image-button"
-          className="button generate-image-button"
-          onClick={onGenerate}
-          disabled={isGenerating}
-        >
-          <i className="ph-bold ph-magic-wand"></i>{' '}
-          {isGenerating
-            ? 'Rendering Vector Pages...'
-            : 'Generate High-Res Sheet'}
-        </button>
       </div>
-    </div>
+    </WarmTooltipGroup>
   );
 };

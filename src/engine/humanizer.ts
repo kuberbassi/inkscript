@@ -261,3 +261,4 @@ export function applyHumanRealismToDOM(
     paperContentEl.innerHTML = originalHTML;
   };
 }
+

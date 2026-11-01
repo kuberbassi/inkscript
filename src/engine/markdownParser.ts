@@ -392,3 +392,4 @@ export function extractLogicalUnits(paperContentEl: HTMLElement): string[] {
   }
   return units;
 }
+

@@ -1,53 +1,65 @@
-/* CSS Variables — AMOLED Monochrome Sharp Theme */
+@import "tailwindcss";
+
+/* ============================================================================
+   Handwriting Studio v3.0 — Notion-Inspired Soft Zinc Dark & React Bits Theme
+   ============================================================================ */
+
 html,
 body {
-  margin: 0px;
+  margin: 0;
+  padding: 0;
 }
 
 body {
-  --background-primary: #ffffff;
-  --surface-card: #fafafa;
-  --font-color-primary: #000000;
-  --elevation-background: #f0f0f0;
-  --link-color: #000000;
-  --font-family-primary: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo,
-    Consolas, monospace;
+  --background-primary: #f8f8fa;
+  --surface-card: #ffffff;
+  --surface-row: #f1f1f4;
+  --surface-chip: #e4e4e7;
+  --font-color-primary: #18181b;
+  --elevation-background: #e4e4e7;
+  --link-color: #18181b;
+  --font-family-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    Roboto, sans-serif;
   --handwriting-font: 'Cedarville Cursive', cursive;
   --line-height-val: 21px;
   --line-stop-px: 19.6px;
   --line-bg-offset: 3px;
   --left-margin-pos: 49px;
-  --primary-color: #000000;
+  --primary-color: #18181b;
   --ink-color: #1a2f7d;
-  --label-color: #555555;
-  --field-borders: #d4d4d4;
-  --primary-button-bg: #000000;
+  --label-color: #71717a;
+  --field-borders: rgba(24, 24, 27, 0.09);
+  --primary-button-bg: #18181b;
   --primary-button-color: #ffffff;
-  --font-color-delete: #ff3333;
-  --delete-button-borders: #ff3333;
+  --font-color-delete: #ef4444;
+  --delete-button-borders: rgba(239, 68, 68, 0.35);
 
   width: 100%;
+  min-height: 100vh;
   overflow-x: hidden;
   background-color: var(--background-primary);
   color: var(--font-color-primary);
-  padding: 28px 56px;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   font-family: var(--font-family-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body.dark {
-  --background-primary: #000000;
-  --surface-card: #050505;
-  --font-color-primary: #ffffff;
-  --elevation-background: #111111;
-  --link-color: #ffffff;
-  --primary-color: #ffffff;
-  --label-color: #888888;
-  --field-borders: #262626;
-  --primary-button-bg: #ffffff;
-  --primary-button-color: #000000;
-  --delete-button-borders: #ff4444;
-  --font-color-delete: #ff4444;
+  --background-primary: #09090b;
+  --surface-card: #121215;
+  --surface-row: #18181c;
+  --surface-chip: #27272a;
+  --font-color-primary: #f4f4f5;
+  --elevation-background: #222226;
+  --link-color: #f4f4f5;
+  --primary-color: #f4f4f5;
+  --label-color: #9ca3af;
+  --field-borders: rgba(255, 255, 255, 0.08);
+  --primary-button-bg: #f4f4f5;
+  --primary-button-color: #09090b;
+  --delete-button-borders: rgba(239, 68, 68, 0.4);
+  --font-color-delete: #ef4444;
 }
 
 @font-face {
@@ -59,9 +71,31 @@ body.dark {
   box-sizing: border-box;
 }
 
-main {
-  max-width: 1380px;
+/* ============================================================================
+   Top Margin Aurora Banner
+   ============================================================================ */
+.aurora-top-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 220px;
+  pointer-events: none;
+  z-index: 0;
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0) 100%);
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 1) 0%,
+    rgba(0, 0, 0, 0) 100%
+  );
+}
+
+.studio-main {
+  position: relative;
+  z-index: 1;
+  max-width: 1320px;
   margin: 0 auto;
+  padding: 28px 40px 56px 40px;
 }
 
 a {
@@ -70,64 +104,117 @@ a {
 }
 
 section {
-  padding: 12px 0px;
+  padding: 10px 0;
 }
 
+/* ============================================================================
+   Header — Clean Notion-Like Studio Header
+   ============================================================================ */
 .app-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  padding-bottom: 16px;
-  margin-bottom: 16px;
+  align-items: flex-start;
+  padding-bottom: 20px;
+  margin-bottom: 18px;
   border-bottom: 1px solid var(--field-borders);
 }
 
+.header-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.brand-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  background-color: var(--surface-row);
+  border: 1px solid var(--field-borders);
+  color: var(--label-color);
+  margin-bottom: 2px;
+}
+
 h1 {
-  font-size: 1.85rem;
+  font-size: 1.75rem;
   margin: 0;
   font-weight: 700;
   letter-spacing: -0.03em;
-  text-transform: uppercase;
+  line-height: 1.15;
 }
 
 .subtitle {
-  margin: 4px 0 0 0;
-  font-size: 0.82rem;
+  margin: 2px 0 0 0;
+  font-size: 0.84rem;
   color: var(--label-color);
-  letter-spacing: 0.02em;
+  letter-spacing: -0.01em;
 }
 
 h2 {
-  font-size: 1.05rem;
+  font-size: 0.96rem;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: -0.015em;
 }
 
 .section-header-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 6px;
+  margin-bottom: 10px;
   width: 400px;
 }
 
+.sheet-live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  background-color: rgba(34, 197, 94, 0.14);
+  color: #22c55e;
+}
+
+.sheet-live-pill::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: #22c55e;
+}
+
+/* ============================================================================
+   Soft Rounded Pill Buttons (React Bits / Notion Style)
+   ============================================================================ */
 button {
   border: 1px solid var(--field-borders);
-  background-color: var(--elevation-background);
+  background-color: var(--surface-chip);
   color: var(--font-color-primary);
-  border-radius: 0px;
+  border-radius: 10px;
   cursor: pointer;
-  padding: 9px 16px;
+  padding: 8px 14px;
   font-weight: 500;
+  font-size: 0.83rem;
   font-family: var(--font-family-primary);
-  transition: all 0.12s ease;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 button:hover:not(:disabled) {
-  border-color: var(--primary-color);
-  background-color: var(--primary-color);
-  color: var(--primary-button-color);
+  background-color: color-mix(in srgb, var(--surface-chip) 82%, var(--font-color-primary));
+}
+
+button:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 button:disabled {
@@ -136,110 +223,291 @@ button:disabled {
 }
 
 .draw-button {
-  font-size: 0.75rem;
-  padding: 5px 10px;
-  border-radius: 0px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.seed-button {
-  font-size: 0.68rem;
-  padding: 2px 7px;
-  border-radius: 0px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.reset-bg-button {
-  font-size: 0.7rem;
-  padding: 2px 8px;
-  border-radius: 0px;
-  background-color: transparent;
-  color: var(--font-color-delete);
-  border: 1px solid var(--delete-button-borders);
-  margin-bottom: 4px;
-}
-
-.reset-bg-button:hover {
-  background-color: var(--font-color-delete);
-  color: #fff;
-  border-color: var(--font-color-delete);
-}
-
-label {
-  color: var(--label-color);
-  font-size: 0.74rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
   font-weight: 500;
-  letter-spacing: 0.01em;
-}
-
-label.block {
-  display: block;
-  padding-bottom: 5px;
-}
-
-select {
-  background: url('/images/dropdown.svg') no-repeat;
-  background-position: calc(100% - 12px) center;
-  background-color: var(--surface-card);
+  padding: 6px 12px;
+  border-radius: 9px;
+  background-color: var(--surface-row);
   border: 1px solid var(--field-borders);
-  color: var(--font-color-primary);
-  border-radius: 0px;
-  font-size: 0.85rem;
-  display: block;
-  width: 100%;
-  padding: 8px 30px 8px 10px;
-  -moz-appearance: none;
-  -webkit-appearance: none;
-  font-family: var(--font-family-primary);
-  transition: border-color 0.12s ease;
 }
 
-select:focus,
-input:focus {
-  outline: none;
-  border-color: var(--primary-color);
-}
-
-option {
-  background-color: var(--surface-card);
-  color: var(--font-color-primary);
-}
-
-body.dark select {
-  background: url('/images/dropdown-white.svg') no-repeat;
-  background-position: calc(100% - 12px) center;
-  background-color: var(--surface-card);
-}
-
-input {
-  padding: 8px 10px;
-  border-radius: 0px;
+.dark-mode-toggle {
+  cursor: pointer;
   border: 1px solid var(--field-borders);
-  color: var(--font-color-primary);
+  background: var(--surface-row);
+  border-radius: 10px;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+/* ============================================================================
+   Floating Pill Formatting Toolbar (Image 4 & 5 Aesthetic)
+   ============================================================================ */
+.editor-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 400px;
+  padding: 6px;
+  border-radius: 14px;
+  border: 1px solid var(--field-borders);
   background-color: var(--surface-card);
-  display: block;
-  width: 100%;
-  font-size: 0.85rem;
-  font-family: var(--font-family-primary);
+  box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.28);
+  margin-bottom: 10px;
 }
 
-input[type='number']::-webkit-outer-spin-button,
-input[type='number']::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-input[type='number'] {
-  -moz-appearance: textfield !important;
-  -webkit-appearance: none;
+.toolbar-pill-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2px;
   width: 100%;
 }
 
-/* Global Layout Classes */
+.toolbar-divider {
+  width: 1px;
+  height: 18px;
+  background-color: var(--field-borders);
+  margin: 0 2px;
+}
+
+.tool-btn {
+  width: 38px;
+  height: 34px;
+  padding: 0;
+  font-size: 1.05rem;
+  border-radius: 9px;
+  background-color: transparent;
+  color: color-mix(in srgb, var(--font-color-primary) 82%, transparent);
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background-color 140ms ease,
+    color 140ms ease,
+    transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.tool-btn:hover:not(:disabled) {
+  background-color: var(--surface-chip);
+  color: var(--font-color-primary);
+}
+
+/* ============================================================================
+   Notion / React Bits Customizer Cards (Image 3 Aesthetic)
+   ============================================================================ */
+.customization-col {
+  flex: 1;
+  padding-left: 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.customizer-card {
+  border-radius: 16px;
+  border: 1px solid var(--field-borders);
+  background-color: var(--surface-card);
+  box-shadow: 0 8px 28px -10px rgba(0, 0, 0, 0.3);
+  overflow: visible;
+}
+
+.customizer-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 18px;
+  border-bottom: 1px solid var(--field-borders);
+}
+
+.customizer-card-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--font-color-primary);
+}
+
+.customizer-badge {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--label-color);
+  background-color: var(--surface-row);
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--field-borders);
+}
+
+.customizer-reset-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 8px;
+  background-color: transparent;
+  border: 1px solid transparent;
+  color: var(--label-color);
+}
+
+.customizer-reset-btn:hover:not(:disabled) {
+  background-color: var(--surface-row);
+  color: var(--font-color-primary);
+}
+
+.customizer-card-body {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.customizer-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.customizer-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.prop-cell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 40px;
+  padding: 5px 8px 5px 12px;
+  border-radius: 10px;
+  background-color: var(--surface-row);
+  border: 1px solid var(--field-borders);
+}
+
+.prop-label {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--label-color);
+  white-space: nowrap;
+}
+
+.prop-control {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.notion-chip-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  font-size: 0.76rem;
+  font-weight: 500;
+  border-radius: 7px;
+  background-color: var(--surface-chip);
+  color: var(--font-color-primary);
+  border: none;
+}
+
+.notion-chip-btn.danger {
+  background-color: rgba(239, 68, 68, 0.14);
+  color: #ef4444;
+}
+
+/* Smooth Pill Switch (Image 3 "Show Timer" Toggle Style) */
+.notion-switch {
+  position: relative;
+  width: 38px;
+  height: 22px;
+  padding: 2px;
+  border-radius: 999px;
+  background-color: var(--surface-chip);
+  border: 1px solid var(--field-borders);
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  transition: background-color 160ms ease;
+}
+
+.notion-switch[data-checked='true'] {
+  background-color: var(--font-color-primary);
+}
+
+.notion-switch-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background-color: var(--label-color);
+  transform: translateX(0);
+  transition:
+    transform 180ms cubic-bezier(0.23, 1, 0.32, 1),
+    background-color 160ms ease;
+}
+
+.notion-switch[data-checked='true'] .notion-switch-thumb {
+  transform: translateX(16px);
+  background-color: var(--background-primary);
+}
+
+/* ============================================================================
+   Generate Action Bar & CallChip
+   ============================================================================ */
+.generate-action-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+}
+
+.generate-image-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 42px;
+  padding: 0 22px;
+  border-radius: 11px;
+  background-color: var(--primary-button-bg);
+  color: var(--primary-button-color);
+  font-size: 0.86rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  border: 1px solid transparent;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.22);
+}
+
+.generate-image-button:hover:not(:disabled) {
+  background-color: color-mix(
+    in srgb,
+    var(--primary-button-bg) 88%,
+    var(--primary-button-color)
+  );
+  color: var(--primary-button-color);
+}
+
+/* ============================================================================
+   Sheet / Page Styling (DO NOT ALTER GEOMETRY — Used by Direct Canvas 2D Engine)
+   ============================================================================ */
 .shadow {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
 }
 
 .display-flex {
@@ -255,75 +523,17 @@ input[type='number'] {
   width: 400px;
 }
 
-.generate-image-section {
-  padding: 4px 0px;
-  font-size: 0.95rem;
-}
-
-.generate-image-button {
-  background-color: var(--primary-button-bg);
-  color: var(--primary-button-color);
-  font-size: 0.9rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  padding: 13px 36px;
-  border: 1px solid var(--primary-color);
-  border-radius: 0px;
-}
-
-.generate-image-button:hover:not(:disabled) {
-  background-color: transparent;
-  color: var(--primary-color);
-}
-
-.imp-button {
-  color: var(--primary-button-color);
-  border: 1px solid var(--primary-color);
-  background-color: var(--primary-button-bg);
-  text-transform: uppercase;
-  font-size: 0.8rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-}
-
-.imp-button:hover:not(:disabled) {
-  background-color: transparent;
-  color: var(--primary-color);
-}
-
-.delete-button {
-  color: var(--font-color-delete);
-  border: 1px solid var(--delete-button-borders);
-  background-color: transparent;
-  text-transform: uppercase;
-  font-size: 0.8rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-}
-
-.delete-button:hover:not(:disabled) {
-  background-color: var(--font-color-delete);
-  color: #fff;
-  border-color: var(--font-color-delete);
-}
-
-.customization-col {
-  flex: 1;
-  padding: 0px 0px 0px 40px !important;
-}
-
 .left-margin-and-content {
   min-height: calc(100% - 50px);
   position: relative;
 }
 
-/* Sheet / Page Styling */
 .page-a {
   width: 400px;
   height: calc(11.7 * 400px / 8.3); /* A4 Ratio = 563.85px */
   background: #fff;
   border: 1px solid var(--field-borders);
+  border-radius: 6px;
   font-size: 11pt;
   position: relative;
   top: 0px;
@@ -333,6 +543,7 @@ input[type='number'] {
   overflow-y: auto;
   scrollbar-color: transparent;
   scrollbar-width: thin;
+  box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.45);
 }
 
 .page-a.custom-paper-bg {
@@ -397,187 +608,6 @@ input[type='number'] {
   pointer-events: none;
 }
 
-/* OUTPUT SECTION */
-.output-section {
-  margin-top: 20px;
-  border-top: 1px solid var(--field-borders);
-  padding-top: 20px;
-}
-
-.output-header-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.output-actions {
-  display: flex;
-  gap: 10px;
-}
-
-.output {
-  width: 100%;
-  padding: 28px;
-  white-space: nowrap;
-  overflow-x: auto;
-  background-color: var(--surface-card);
-  border: 1px solid var(--field-borders);
-  border-radius: 0px;
-  color: var(--label-color);
-}
-
-.output .close-button {
-  position: absolute;
-  right: -3px;
-  top: -11px;
-  border-radius: 0px;
-  padding: 3px 9px;
-  background-color: #000;
-  color: #fff;
-  font-size: 13pt;
-  font-weight: bold;
-  border: 1px solid #fff;
-  z-index: 2;
-}
-
-.download-image-button {
-  display: inline-block;
-  text-align: center;
-  margin-top: 12px;
-  background-color: var(--primary-button-bg);
-  color: var(--primary-button-color);
-  border: 1px solid var(--primary-color);
-  font-weight: 600;
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 8px 16px;
-  border-radius: 0px;
-}
-
-.download-image-button:hover {
-  background-color: transparent;
-  color: var(--primary-color);
-}
-
-.output img {
-  width: 300px;
-  margin: 0px 12px;
-  border-radius: 0px;
-  border: 1px solid var(--field-borders);
-}
-
-fieldset {
-  padding: 15px 18px;
-  border-radius: 0px;
-  border: 1px solid var(--field-borders);
-  background-color: var(--surface-card);
-  margin-top: 14px;
-}
-
-legend {
-  font-size: 0.76rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  padding: 0px 8px;
-  color: var(--font-color-primary);
-}
-
-/* Clean Sharp File Input */
-input[type='file'] {
-  padding: 5px 8px;
-  font-size: 0.78rem;
-  cursor: pointer;
-}
-
-input[type='file']::file-selector-button {
-  background-color: var(--elevation-background);
-  color: var(--font-color-primary);
-  border: 1px solid var(--field-borders);
-  border-radius: 0px;
-  padding: 4px 10px;
-  margin-right: 10px;
-  font-size: 0.74rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-
-.postfix-input {
-  position: relative;
-}
-
-.postfix-input label {
-  display: block;
-  margin-bottom: 5px;
-}
-
-.postfix-input::after {
-  content: attr(data-postfix);
-  position: absolute;
-  right: 10px;
-  bottom: 9px;
-  font-size: 11px;
-  color: var(--label-color);
-  pointer-events: none;
-}
-
-.category-grid {
-  display: grid;
-  grid-gap: 12px;
-  grid-auto-flow: column;
-  grid-auto-columns: 1fr;
-}
-
-/* Rich Text Formatting Toolbar — 8x2 Uniform Grid Flush to 400px Sheet */
-.editor-toolbar {
-  display: flex;
-  flex-direction: column;
-  width: 400px;
-  border: 1px solid var(--field-borders);
-  border-bottom: none;
-  background-color: var(--surface-card);
-  margin-bottom: 0px;
-}
-
-.toolbar-row {
-  display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  width: 100%;
-  border-bottom: 1px solid var(--field-borders);
-}
-
-.toolbar-row:last-child {
-  border-bottom: none;
-}
-
-.tool-btn {
-  height: 36px;
-  padding: 0;
-  font-size: 1rem;
-  border-radius: 0px;
-  background-color: var(--surface-card);
-  color: var(--font-color-primary);
-  border: none;
-  border-right: 1px solid var(--field-borders);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color 0.1s ease, color 0.1s ease;
-}
-
-.toolbar-row .tool-btn:last-child {
-  border-right: none;
-}
-
-.tool-btn:hover {
-  background-color: var(--primary-color);
-  color: var(--primary-button-color);
-}
-
 /* Handwritten Rich Text Styling inside .paper-content */
 .paper-content b,
 .paper-content strong {
@@ -610,76 +640,183 @@ input[type='file']::file-selector-button {
   padding-left: 20px;
 }
 
-/* DARK MODE SWITCH — Sharp Monochrome */
-.dark-mode-toggle {
-  cursor: pointer;
+/* ============================================================================
+   Output Gallery Section
+   ============================================================================ */
+.output-section {
+  margin-top: 28px;
+  border-top: 1px solid var(--field-borders);
+  padding-top: 22px;
+}
+
+.output-header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.output-count-pill {
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background-color: var(--surface-row);
   border: 1px solid var(--field-borders);
-  background: var(--surface-card);
-  border-radius: 0px;
-  width: 38px;
-  height: 38px;
+  color: var(--label-color);
+}
+
+.output-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.imp-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 10px;
+  color: var(--primary-button-color);
+  border: 1px solid transparent;
+  background-color: var(--primary-button-bg);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.output {
+  width: 100%;
+  padding: 24px;
+  display: flex;
+  gap: 20px;
+  overflow-x: auto;
+  background-color: var(--surface-card);
+  border: 1px solid var(--field-borders);
+  border-radius: 16px;
+  color: var(--label-color);
+}
+
+.output-empty-state {
+  width: 100%;
+  padding: 28px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--label-color);
+}
+
+.output-image-container {
+  flex: 0 0 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 14px;
+  background-color: var(--surface-row);
+  border: 1px solid var(--field-borders);
+}
+
+.output-card-preview {
+  position: relative;
+}
+
+.output-card-preview img {
+  width: 100%;
+  display: block;
+  border-radius: 8px;
+  border: 1px solid var(--field-borders);
+}
+
+.output .close-button {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+  background-color: rgba(9, 9, 11, 0.78);
+  backdrop-filter: blur(6px);
+  color: #fff;
+  font-size: 13px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  z-index: 2;
+}
+
+.output-card-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.download-image-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 34px;
+  background-color: var(--surface-chip);
+  color: var(--font-color-primary);
+  border: 1px solid var(--field-borders);
+  font-weight: 600;
+  font-size: 0.78rem;
+  border-radius: 9px;
+  transition: background-color 140ms ease;
+}
+
+.download-image-button:hover {
+  background-color: var(--primary-button-bg);
+  color: var(--primary-button-color);
+}
+
+.output-reorder-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.output-page-num {
+  font-size: 0.74rem;
+  font-weight: 500;
+  color: var(--label-color);
+}
+
+.notion-icon-btn {
+  width: 28px;
+  height: 28px;
   padding: 0;
-}
-
-.dark-mode-toggle:hover {
-  border-color: var(--primary-color);
-  background: var(--elevation-background);
-}
-
-/* Switch — Sharp Square Monochrome Toggle */
-.switch-toggle {
-  position: relative;
-  display: block;
-  margin-top: 6px;
-  cursor: pointer;
-  width: 46px;
-  height: 22px;
-  border-radius: 0px;
-  background-color: var(--elevation-background);
+  border-radius: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--surface-chip);
   border: 1px solid var(--field-borders);
 }
 
-.switch-toggle input {
-  position: relative;
-  top: 4px;
-  left: 4px;
-  z-index: -1;
-  opacity: 0;
-}
-
-.switch-toggle div {
-  position: absolute;
-  border-radius: 0px;
-  background-color: #666666;
-  transition: 0.12s ease;
-}
-
-.switch-toggle input:checked + div {
-  left: 24px;
-  background-color: var(--primary-color);
-}
-
-.switch-toggle.outer div {
-  width: 16px;
-  height: 14px;
-  top: 3px;
-  left: 3px;
-}
-
-/* POPUP, DRAW AND ZOOM LIGHTBOX */
+/* ============================================================================
+   Popup, Draw Modal & Zoom Lightbox
+   ============================================================================ */
 .popup-container {
   position: fixed;
   top: 0;
   left: 0;
   height: 100%;
   width: 100%;
-  background-color: rgba(0, 0, 0, 0.96);
+  background-color: rgba(9, 9, 11, 0.92);
+  backdrop-filter: blur(10px);
   z-index: 999999;
   color: #fff;
-  padding: 60px;
+  padding: 48px;
   display: none;
 }
 
@@ -689,32 +826,30 @@ input[type='file']::file-selector-button {
 
 .popup-container .close-button {
   position: fixed;
-  top: 16px;
+  top: 20px;
   right: 24px;
-  padding: 8px 18px;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
   color: #fff;
-  background-color: transparent;
-  border: 1px solid #333;
-  border-radius: 0px;
-  font-size: 24pt;
-  font-weight: bold;
-}
-
-.popup-container .close-button:hover {
-  border-color: #fff;
-  background-color: #fff;
-  color: #000;
+  background-color: #18181b;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  font-size: 18px;
 }
 
 #diagram-canvas {
   cursor: url('/images/favicon-32x32-3.png'), crosshair;
-  border-radius: 0px !important;
+  border-radius: 12px !important;
 }
 
-@media (max-width: 960px) {
-  body {
-    padding: 20px 14px;
+@media (max-width: 1080px) {
+  .studio-main {
+    padding: 20px 16px 40px 16px;
   }
   .display-flex.responsive-flex {
     flex-direction: column;
@@ -724,11 +859,13 @@ input[type='file']::file-selector-button {
     flex: 1;
   }
   .customization-col {
-    padding: 24px 0px !important;
+    padding: 24px 0 0 0 !important;
   }
-  .category-grid {
-    grid-auto-flow: row;
-    grid-auto-rows: auto;
+  .customizer-grid-3 {
+    grid-template-columns: 1fr;
+  }
+  .customizer-grid-2 {
+    grid-template-columns: 1fr;
   }
   .page-container {
     width: 100%;
