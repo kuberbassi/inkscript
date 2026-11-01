@@ -1,6 +1,6 @@
 import { SHEET_GEOMETRY, STENCIL_COLORS } from '../constants/studioTokens';
 import { GeneratedPage, StudioSettings } from '../types/studio';
-import { applyHumanRealismToDOM } from './humanizer';
+import { computeWordRealism } from './humanizer';
 import { extractLogicalUnits, joinLogicalLines } from './markdownParser';
 import { SeededRandom } from './prng';
 
@@ -64,44 +64,6 @@ function applyScannerContrast(
   ctx.putImageData(imageData, 0, 0);
 }
 
-interface ParsedTransform {
-  skewXRad: number;
-  rotateRad: number;
-  scaleX: number;
-  scaleY: number;
-}
-
-function parseInlineTransform(transformStr: string): ParsedTransform {
-  let skewXRad = 0;
-  let rotateRad = 0;
-  let scaleX = 1;
-  let scaleY = 1;
-
-  if (!transformStr) {
-    return { skewXRad, rotateRad, scaleX, scaleY };
-  }
-
-  const skewMatch = transformStr.match(/skewX\(([-\d.]+)deg\)/i);
-  if (skewMatch) {
-    skewXRad = (parseFloat(skewMatch[1]) * Math.PI) / 180;
-  }
-
-  const rotMatch = transformStr.match(/rotate\(([-\d.]+)deg\)/i);
-  if (rotMatch) {
-    rotateRad = (parseFloat(rotMatch[1]) * Math.PI) / 180;
-  }
-
-  const scaleMatch = transformStr.match(
-    /scale\(([-\d.]+)(?:,\s*([-\d.]+))?\)/i
-  );
-  if (scaleMatch) {
-    scaleX = parseFloat(scaleMatch[1]);
-    scaleY = scaleMatch[2] ? parseFloat(scaleMatch[2]) : scaleX;
-  }
-
-  return { skewXRad, rotateRad, scaleX, scaleY };
-}
-
 function hasAncestorTag(
   node: Node,
   rootEl: HTMLElement,
@@ -119,9 +81,9 @@ function hasAncestorTag(
 
 /**
  * Direct HTML5 Canvas 2D Vector Page Renderer
- * Replaces html2canvas completely: renders ruled lines, margin lines, humanized syllables
- * with 2D affine transforms, multi-pass ink shadows, and subtly interrupted level underlines
- * directly onto a high-DPI <canvas> in < 35ms per page.
+ * Renders ruled lines, independent top/left margins, baseline-locked words
+ * using exact alphabetic baseline metrics (fontBoundingBoxAscent), and smooth
+ * continuous underlines that match the Live Sheet Preview pixel-for-pixel.
  */
 export async function renderCurrentSheetToCanvas(
   pageEl: HTMLElement,
@@ -188,7 +150,6 @@ export async function renderCurrentSheetToCanvas(
     ctx.lineWidth = 1.5;
 
     if (settings.showTopMargin) {
-      // Horizontal top margin line at y = TOP_MARGIN_HEIGHT_PX
       ctx.beginPath();
       ctx.moveTo(0, SHEET_GEOMETRY.TOP_MARGIN_HEIGHT_PX);
       ctx.lineTo(PAGE_WIDTH, SHEET_GEOMETRY.TOP_MARGIN_HEIGHT_PX);
@@ -196,7 +157,6 @@ export async function renderCurrentSheetToCanvas(
     }
 
     if (settings.showLeftMargin) {
-      // Vertical left margin line starting from the very top of the page (y = 0 to PAGE_HEIGHT)
       ctx.beginPath();
       ctx.moveTo(leftMarginPos + 0.75, 0);
       ctx.lineTo(leftMarginPos + 0.75, PAGE_HEIGHT);
@@ -225,12 +185,12 @@ export async function renderCurrentSheetToCanvas(
     }
   }
 
-  // 5. Render All Handwritten Text Nodes with Exact DOM Coordinates & 2D Affine Transforms
-  //    While simultaneously collecting exact glyph-tight underline & strikethrough segments!
+  // 5. Render All Handwritten Text Words Locked to Exact DOM Alphabetic Baseline
   const fontFamily = settings.customFontName
     ? `'${settings.customFontName}', cursive`
     : settings.handwritingFont;
   const fontSizePx = (settings.fontSizePt * 4) / 3;
+  const letterSpacingPx = (settings.letterSpacingPt * 4) / 3;
 
   interface DecorationSegment {
     startX: number;
@@ -241,6 +201,7 @@ export async function renderCurrentSheetToCanvas(
   const underlineRaw: DecorationSegment[] = [];
   const strikeRaw: DecorationSegment[] = [];
 
+  const wordRng = new SeededRandom(pageSeed);
   const walker = document.createTreeWalker(
     paperContentEl,
     NodeFilter.SHOW_TEXT,
@@ -253,10 +214,6 @@ export async function renderCurrentSheetToCanvas(
   while (textNode) {
     const rawText = textNode.nodeValue || '';
     if (rawText.trim().length > 0) {
-      const parentEl = textNode.parentElement as HTMLElement;
-      range.selectNodeContents(textNode);
-      const clientRects = Array.from(range.getClientRects());
-
       const isBold = hasAncestorTag(textNode, paperContentEl, ['b', 'strong']);
       const isItalic = hasAncestorTag(textNode, paperContentEl, ['i', 'em']);
       const isUnderlined = hasAncestorTag(textNode, paperContentEl, [
@@ -269,125 +226,108 @@ export async function renderCurrentSheetToCanvas(
         'del'
       ]);
 
-      // Record tight text-node glyph rects for underline/strikethrough (never block div rects!)
-      if (isUnderlined || isStrikethrough) {
-        for (const r of clientRects) {
-          if (r.width < 1.5) continue;
-          const sx = r.left - pageRect.left;
-          const ex = sx + r.width;
-          if (isUnderlined) {
-            underlineRaw.push({
-              startX: sx,
-              endX: ex,
-              baseY: r.top - pageRect.top + r.height - 2.1
-            });
-          }
-          if (isStrikethrough) {
-            strikeRaw.push({
-              startX: sx,
-              endX: ex,
-              baseY: r.top - pageRect.top + r.height - fontSizePx * 0.44
-            });
-          }
-        }
-      }
-
-      const opacity = parentEl.style.opacity
-        ? parseFloat(parentEl.style.opacity)
-        : 0.94;
-      const textShadow = parentEl.style.textShadow || '';
-      const transform = parseInlineTransform(parentEl.style.transform || '');
-
       const fontWeight = isBold ? '700' : '400';
       const fontStyle = isItalic ? 'italic' : 'normal';
       ctx.font = `${fontStyle} ${fontWeight} ${fontSizePx.toFixed(2)}px ${fontFamily}`;
-      ctx.textBaseline = 'bottom';
+      ctx.textBaseline = 'alphabetic';
 
-      if (clientRects.length === 1) {
-        const rect = clientRects[0];
-        const x = rect.left - pageRect.left;
-        const y = rect.top - pageRect.top;
-        const w = rect.width;
-        const h = rect.height;
+      // Measure each non-whitespace word token via DOM Range so horizontal & vertical coordinates
+      // match the Live Sheet Preview with 0.0px drift
+      const wordRegex = /\S+/g;
+      let match: RegExpExecArray | null;
 
-        if (y + h > 0 && y < PAGE_HEIGHT) {
+      while ((match = wordRegex.exec(rawText)) !== null) {
+        const word = match[0];
+        const wordStart = match.index;
+        const wordEnd = wordStart + word.length;
+
+        range.setStart(textNode, wordStart);
+        range.setEnd(textNode, wordEnd);
+        const wRect = range.getBoundingClientRect();
+        if (wRect.width < 0.5 || wRect.height < 0.5) continue;
+
+        const x = wRect.left - pageRect.left;
+        const y = wRect.top - pageRect.top;
+        const w = wRect.width;
+        const h = wRect.height;
+
+        // Exact alphabetic baseline inside the DOM glyph bounding box
+        const metrics = ctx.measureText(word);
+        const fontAscent =
+          metrics.fontBoundingBoxAscent !== undefined &&
+          metrics.fontBoundingBoxAscent > 0
+            ? metrics.fontBoundingBoxAscent
+            : h * 0.72;
+        const baselineY = y + fontAscent;
+
+        if (baselineY > 0 && y < PAGE_HEIGHT) {
+          const realism = computeWordRealism(
+            word,
+            wordRng,
+            settings.realismIntensity,
+            isBold
+          );
+
           ctx.save();
-          ctx.globalAlpha = opacity;
           ctx.fillStyle = settings.inkColor;
 
-          // Pivot affine transform (slant, rotation, rounded bowl scale) around 50% X, 82% Y baseline
+          // Pivot micro-slant & scale strictly on (x + w/2, baselineY) so the word never leaves the ruled line
           const pivotX = x + w * 0.5;
-          const pivotY = y + h * 0.82;
+          const pivotY = baselineY;
           ctx.translate(pivotX, pivotY);
-          if (transform.rotateRad !== 0) {
-            ctx.rotate(transform.rotateRad);
-          }
           if (
-            transform.skewXRad !== 0 ||
-            transform.scaleX !== 1 ||
-            transform.scaleY !== 1
+            realism.skewRad !== 0 ||
+            realism.scaleX !== 1 ||
+            realism.scaleY !== 1
           ) {
             ctx.transform(
-              transform.scaleX,
+              realism.scaleX,
               0,
-              Math.tan(transform.skewXRad),
-              transform.scaleY,
+              Math.tan(realism.skewRad),
+              realism.scaleY,
               0,
               0
             );
           }
           ctx.translate(-pivotX, -pivotY);
 
-          const letterSpacingPx = parentEl.style.letterSpacing
-            ? parseFloat(parentEl.style.letterSpacing)
-            : (settings.letterSpacingPt * 4) / 3;
-
-          const drawString = (ox: number, oy: number) => {
+          const drawWord = (ox: number, oy: number) => {
             if (Math.abs(letterSpacingPx) < 0.02) {
-              ctx.fillText(rawText, x + ox, y + h + oy);
+              ctx.fillText(word, x + ox, baselineY + oy);
             } else {
               let curX = x + ox;
-              for (const ch of rawText) {
-                ctx.fillText(ch, curX, y + h + oy);
+              for (const ch of word) {
+                ctx.fillText(ch, curX, baselineY + oy);
                 curX += ctx.measureText(ch).width + letterSpacingPx;
               }
             }
           };
 
-          // Multi-pass ballpoint ink pressure shadows
-          if (textShadow || isBold) {
+          if (realism.shadowAlpha > 0) {
             ctx.save();
-            ctx.globalAlpha = opacity * (isBold ? 0.65 : 0.48);
-            drawString(isBold ? 0.32 : 0.22, 0.08);
+            ctx.globalAlpha = realism.shadowAlpha;
+            drawWord(realism.shadowOffsetX, realism.shadowOffsetY);
             ctx.restore();
           }
 
-          drawString(0, 0);
+          ctx.globalAlpha = realism.opacity;
+          drawWord(0, 0);
           ctx.restore();
-        }
-      } else if (clientRects.length > 1) {
-        // Multi-line wrapped text node (e.g. a long underlined heading): measure word-by-word via Range
-        const tokenRegex = /\S+\s*/g;
-        let match: RegExpExecArray | null;
-        while ((match = tokenRegex.exec(rawText)) !== null) {
-          const wordStart = match.index;
-          const wordEnd = wordStart + match[0].length;
-          range.setStart(textNode, wordStart);
-          range.setEnd(textNode, wordEnd);
-          const wRect = range.getBoundingClientRect();
-          const x = wRect.left - pageRect.left;
-          const y = wRect.top - pageRect.top;
-          const h = wRect.height;
 
-          if (y + h > 0 && y < PAGE_HEIGHT) {
-            ctx.save();
-            ctx.globalAlpha = opacity;
-            ctx.fillStyle = settings.inkColor;
-            if (isBold) {
-              ctx.fillText(match[0], x + 0.3, y + h + 0.08);
-            }
-            ctx.fillText(match[0], x, y + h);
-            ctx.restore();
+          // Record glyph-tight underline & strikethrough anchored to the alphabetic baseline
+          if (isUnderlined) {
+            underlineRaw.push({
+              startX: x,
+              endX: x + w,
+              baseY: baselineY + 1.8
+            });
+          }
+          if (isStrikethrough) {
+            strikeRaw.push({
+              startX: x,
+              endX: x + w,
+              baseY: baselineY - fontSizePx * 0.3
+            });
           }
         }
       }
@@ -395,21 +335,21 @@ export async function renderCurrentSheetToCanvas(
     textNode = walker.nextNode() as Text | null;
   }
 
-  // Helper to merge consecutive inline segments on the same visual line across word spaces
+  // Merge consecutive word segments on the same visual line across spaces
   const mergeDecorationSegments = (
     segs: DecorationSegment[]
   ): DecorationSegment[] => {
     if (segs.length === 0) return [];
     const sorted = [...segs].sort((a, b) =>
-      Math.abs(a.baseY - b.baseY) < 6 ? a.startX - b.startX : a.baseY - b.baseY
+      Math.abs(a.baseY - b.baseY) < 5 ? a.startX - b.startX : a.baseY - b.baseY
     );
     const merged: DecorationSegment[] = [{ ...sorted[0] }];
     for (let i = 1; i < sorted.length; i++) {
       const cur = sorted[i];
       const prev = merged[merged.length - 1];
       if (
-        Math.abs(cur.baseY - prev.baseY) < 6 &&
-        cur.startX - prev.endX <= 24
+        Math.abs(cur.baseY - prev.baseY) < 5 &&
+        cur.startX - prev.endX <= 28
       ) {
         prev.endX = Math.max(prev.endX, cur.endX);
         prev.baseY = (prev.baseY + cur.baseY) * 0.5;
@@ -420,24 +360,26 @@ export async function renderCurrentSheetToCanvas(
     return merged;
   };
 
-  // 6. Render Glyph-Tight, Continuous Level Hand-Drawn Underlines (<u>) & Strikethroughs (<s>)
-  const rng = new SeededRandom(pageSeed + 7919);
+  // 6. Render Continuous, Baseline-Aligned Hand-Drawn Underlines (<u>) & Strikethroughs (<s>)
   const mergedUnderlines = mergeDecorationSegments(underlineRaw);
   for (const seg of mergedUnderlines) {
     const width = seg.endX - seg.startX;
     if (width < 2 || seg.baseY <= 0 || seg.baseY >= PAGE_HEIGHT) continue;
 
     ctx.save();
-    ctx.fillStyle = settings.inkColor;
+    ctx.strokeStyle = settings.inkColor;
+    ctx.lineWidth = 1.15;
+    ctx.lineCap = 'round';
     ctx.globalAlpha = 0.92;
 
-    for (let dx = 0; dx < width; dx += 3) {
-      if (rng.chance(0.055)) continue;
-      const segW = Math.min(3.2, width - dx);
-      const waveDy = Math.sin((seg.startX + dx) * 0.045) * 0.3;
-      const thickness = rng.chance(0.28) ? 1.22 : 0.95;
-      ctx.fillRect(seg.startX + dx, seg.baseY + waveDy, segW, thickness);
+    ctx.beginPath();
+    ctx.moveTo(seg.startX, seg.baseY);
+    for (let dx = 4; dx <= width; dx += 4) {
+      const px = seg.startX + Math.min(dx, width);
+      const waveDy = Math.sin(px * 0.04) * 0.18;
+      ctx.lineTo(px, seg.baseY + waveDy);
     }
+    ctx.stroke();
     ctx.restore();
   }
 
@@ -447,13 +389,15 @@ export async function renderCurrentSheetToCanvas(
     if (width < 2 || seg.baseY <= 0 || seg.baseY >= PAGE_HEIGHT) continue;
 
     ctx.save();
-    ctx.fillStyle = settings.inkColor;
+    ctx.strokeStyle = settings.inkColor;
+    ctx.lineWidth = 1.05;
+    ctx.lineCap = 'round';
     ctx.globalAlpha = 0.9;
-    for (let dx = 0; dx < width; dx += 3.5) {
-      const segW = Math.min(3.6, width - dx);
-      const waveDy = Math.sin((seg.startX + dx) * 0.05) * 0.25;
-      ctx.fillRect(seg.startX + dx, seg.baseY + waveDy, segW, 1.05);
-    }
+
+    ctx.beginPath();
+    ctx.moveTo(seg.startX, seg.baseY);
+    ctx.lineTo(seg.endX, seg.baseY);
+    ctx.stroke();
     ctx.restore();
   }
 
@@ -484,9 +428,10 @@ export async function renderCurrentSheetToCanvas(
 }
 
 /**
- * Multi-Page Humanize-Before-Paginate Generator
- * Normalizes DOM into logical blocks, humanizes upfront so measurement and rendering
- * have 0.0px drift, paginates with widow/orphan protection, and renders each page via Canvas 2D.
+ * Multi-Page Generator
+ * Normalizes DOM into logical blocks without mutating inline geometry so measurement
+ * and rendering have 0.0px drift from the Live Preview, paginates with widow/orphan
+ * protection, and renders each page via Canvas 2D.
  */
 export async function generateHandwrittenPages(
   pageEl: HTMLElement,
@@ -495,7 +440,6 @@ export async function generateHandwrittenPages(
   settings: StudioSettings,
   exactLineHeightPx: number
 ): Promise<GeneratedPage[]> {
-  // Ensure web fonts are loaded before measuring text ranges
   if (document.fonts && document.fonts.ready) {
     await document.fonts.ready;
   }
@@ -514,16 +458,9 @@ export async function generateHandwrittenPages(
     pageEl.scrollTo(0, 0);
     pageEl.style.overflowY = 'hidden';
 
-    // 1. Normalize DOM into discrete logical <div> blocks & humanize upfront
+    // 1. Normalize DOM into discrete logical <div> blocks (without altering inline layout boxes)
     const rawUnits = extractLogicalUnits(paperContentEl);
     paperContentEl.innerHTML = joinLogicalLines(rawUnits);
-    applyHumanRealismToDOM(
-      paperContentEl,
-      settings.realismIntensity,
-      settings.realismSeed,
-      settings.letterSpacingPt,
-      settings.wordSpacingPx
-    );
 
     const blocks = Array.from(paperContentEl.children).map(
       (el) => el.outerHTML
@@ -576,20 +513,22 @@ export async function generateHandwrittenPages(
               plainText.length >= 110 &&
               !isHeadingBlock(candidateBlock)
             ) {
-              const childNodes = Array.from(blockEl.childNodes);
+              const words = blockEl.innerHTML.split(/(\s+)/);
               const fittedContainer = blockEl.cloneNode(false) as HTMLElement;
               let lastFittingHTML = '';
-              let splitNodeIdx = 0;
+              let splitIdx = 0;
 
-              for (let c = 0; c < childNodes.length; c++) {
-                fittedContainer.appendChild(childNodes[c].cloneNode(true));
+              let currentHTML = '';
+              for (let wIdx = 0; wIdx < words.length; wIdx++) {
+                currentHTML += words[wIdx];
+                fittedContainer.innerHTML = currentHTML;
                 paperContentEl.innerHTML = [
                   ...pageBlocks,
                   fittedContainer.outerHTML
                 ].join('');
                 if (paperContentEl.scrollHeight <= maxPageHeight) {
                   lastFittingHTML = fittedContainer.outerHTML;
-                  splitNodeIdx = c + 1;
+                  splitIdx = wIdx + 1;
                 } else {
                   break;
                 }
@@ -598,16 +537,15 @@ export async function generateHandwrittenPages(
               const fittedChars = lastFittingHTML
                 .replace(/<[^>]+>/g, '')
                 .trim().length;
-              const remainingNodes = childNodes.slice(splitNodeIdx);
-              const remainingChars = remainingNodes
-                .map((n) => n.textContent || '')
-                .join('')
+              const remainingHTML = words.slice(splitIdx).join('').trim();
+              const remainingChars = remainingHTML
+                .replace(/<[^>]+>/g, '')
                 .trim().length;
 
               if (
                 fittedChars >= 45 &&
                 remainingChars >= 20 &&
-                splitNodeIdx < childNodes.length
+                splitIdx < words.length
               ) {
                 pageBlocks.push(lastFittingHTML);
                 const remainderContainer = blockEl.cloneNode(
@@ -616,9 +554,7 @@ export async function generateHandwrittenPages(
                 if (remainderContainer.style) {
                   remainderContainer.style.textIndent = '0px';
                 }
-                remainingNodes.forEach((n) =>
-                  remainderContainer.appendChild(n.cloneNode(true))
-                );
+                remainderContainer.innerHTML = remainingHTML;
                 blocks[blockIdx] = remainderContainer.outerHTML;
               }
             }
@@ -719,4 +655,3 @@ export async function generateHandwrittenPages(
 
   return generatedPages;
 }
-
