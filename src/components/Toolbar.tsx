@@ -7,6 +7,44 @@ interface ToolbarProps {
   onHeading1: () => void;
 }
 
+interface ToolItem {
+  id: string;
+  label: string;
+  icon: string;
+  shortcut?: string;
+  action:
+    | { type: 'cmd'; cmd: string }
+    | { type: 'insert'; text: string }
+    | { type: 'heading1' };
+}
+
+const TOOL_GROUPS: ToolItem[][] = [
+  [
+    { id: 'bold', label: 'Bold', icon: 'ph ph-text-b', shortcut: '⌘B', action: { type: 'cmd', cmd: 'bold' } },
+    { id: 'italic', label: 'Italic', icon: 'ph ph-text-italic', shortcut: '⌘I', action: { type: 'cmd', cmd: 'italic' } },
+    { id: 'underline', label: 'Underline', icon: 'ph ph-text-underline', shortcut: '⌘U', action: { type: 'cmd', cmd: 'underline' } },
+    { id: 'strike', label: 'Strikethrough', icon: 'ph ph-text-strikethrough', shortcut: '⌘⇧X', action: { type: 'cmd', cmd: 'strikeThrough' } }
+  ],
+  [
+    { id: 'align-left', label: 'Align Left', icon: 'ph ph-text-align-left', action: { type: 'cmd', cmd: 'justifyLeft' } },
+    { id: 'align-center', label: 'Align Center', icon: 'ph ph-text-align-center', action: { type: 'cmd', cmd: 'justifyCenter' } },
+    { id: 'align-right', label: 'Align Right', icon: 'ph ph-text-align-right', action: { type: 'cmd', cmd: 'justifyRight' } },
+    { id: 'align-justify', label: 'Justify Full', icon: 'ph ph-text-align-justify', action: { type: 'cmd', cmd: 'justifyFull' } }
+  ],
+  [
+    { id: 'bullet-list', label: 'Bullet List', icon: 'ph ph-list-bullets', shortcut: '•', action: { type: 'cmd', cmd: 'insertUnorderedList' } },
+    { id: 'num-list', label: 'Numbered List', icon: 'ph ph-list-numbers', shortcut: '1.', action: { type: 'cmd', cmd: 'insertOrderedList' } },
+    { id: 'h1', label: 'Centered Heading', icon: 'ph ph-text-h-one', shortcut: 'H1', action: { type: 'heading1' } }
+  ],
+  [
+    { id: 'hash', label: 'Insert Hash', icon: 'ph ph-hash', shortcut: '#', action: { type: 'insert', text: '# ' } },
+    { id: 'dot', label: 'Insert Bullet Dot', icon: 'ph-fill ph-dot-outline', shortcut: '•', action: { type: 'insert', text: '• ' } },
+    { id: 'arrow', label: 'Insert Arrow', icon: 'ph ph-arrow-right', shortcut: '→', action: { type: 'insert', text: '→ ' } },
+    { id: 'star', label: 'Insert Star', icon: 'ph ph-star', shortcut: '★', action: { type: 'insert', text: '★ ' } },
+    { id: 'clear-fmt', label: 'Clear Formatting', icon: 'ph ph-eraser', shortcut: '⌘\\', action: { type: 'cmd', cmd: 'removeFormat' } }
+  ]
+];
+
 export const Toolbar: React.FC<ToolbarProps> = ({
   onCommand,
   onInsert,
@@ -14,6 +52,16 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 }) => {
   const preventFocusLoss = (e: React.MouseEvent) => {
     e.preventDefault();
+  };
+
+  const handleTrigger = (item: ToolItem) => {
+    if (item.action.type === 'cmd') {
+      onCommand(item.action.cmd);
+    } else if (item.action.type === 'insert') {
+      onInsert(item.action.text);
+    } else {
+      onHeading1();
+    }
   };
 
   return (
@@ -25,187 +73,28 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         onMouseDown={preventFocusLoss}
       >
         <div className="toolbar-pill-group">
-          <WarmTooltip content="Bold" shortcut="⌘B" side="top">
-            <button
-              type="button"
-              className="tool-btn"
-              onClick={() => onCommand('bold')}
-              aria-label="Bold"
-            >
-              <i className="ph ph-text-b"></i>
-            </button>
-          </WarmTooltip>
-
-          <WarmTooltip content="Italic" shortcut="⌘I" side="top">
-            <button
-              type="button"
-              className="tool-btn"
-              onClick={() => onCommand('italic')}
-              aria-label="Italic"
-            >
-              <i className="ph ph-text-italic"></i>
-            </button>
-          </WarmTooltip>
-
-          <WarmTooltip content="Underline" shortcut="⌘U" side="top">
-            <button
-              type="button"
-              className="tool-btn"
-              onClick={() => onCommand('underline')}
-              aria-label="Underline"
-            >
-              <i className="ph ph-text-underline"></i>
-            </button>
-          </WarmTooltip>
-
-          <WarmTooltip content="Strikethrough" shortcut="⌘⇧X" side="top">
-            <button
-              type="button"
-              className="tool-btn"
-              onClick={() => onCommand('strikeThrough')}
-              aria-label="Strikethrough"
-            >
-              <i className="ph ph-text-strikethrough"></i>
-            </button>
-          </WarmTooltip>
-
-          <span className="toolbar-divider" aria-hidden="true" />
-
-          <WarmTooltip content="Align Left" side="top">
-            <button
-              type="button"
-              className="tool-btn"
-              onClick={() => onCommand('justifyLeft')}
-              aria-label="Align Left"
-            >
-              <i className="ph ph-text-align-left"></i>
-            </button>
-          </WarmTooltip>
-
-          <WarmTooltip content="Align Center" side="top">
-            <button
-              type="button"
-              className="tool-btn"
-              onClick={() => onCommand('justifyCenter')}
-              aria-label="Align Center"
-            >
-              <i className="ph ph-text-align-center"></i>
-            </button>
-          </WarmTooltip>
-
-          <WarmTooltip content="Align Right" side="top">
-            <button
-              type="button"
-              className="tool-btn"
-              onClick={() => onCommand('justifyRight')}
-              aria-label="Align Right"
-            >
-              <i className="ph ph-text-align-right"></i>
-            </button>
-          </WarmTooltip>
-
-          <WarmTooltip content="Justify Full" side="top">
-            <button
-              type="button"
-              className="tool-btn"
-              onClick={() => onCommand('justifyFull')}
-              aria-label="Justify Full"
-            >
-              <i className="ph ph-text-align-justify"></i>
-            </button>
-          </WarmTooltip>
-
-          <span className="toolbar-divider" aria-hidden="true" />
-
-          <WarmTooltip content="Bullet List" shortcut="•" side="top">
-            <button
-              type="button"
-              className="tool-btn"
-              onClick={() => onCommand('insertUnorderedList')}
-              aria-label="Bullet List"
-            >
-              <i className="ph ph-list-bullets"></i>
-            </button>
-          </WarmTooltip>
-
-          <WarmTooltip content="Numbered List" shortcut="1." side="top">
-            <button
-              type="button"
-              className="tool-btn"
-              onClick={() => onCommand('insertOrderedList')}
-              aria-label="Numbered List"
-            >
-              <i className="ph ph-list-numbers"></i>
-            </button>
-          </WarmTooltip>
-
-          <WarmTooltip content="Centered Heading" shortcut="H1" side="top">
-            <button
-              type="button"
-              className="tool-btn"
-              onClick={onHeading1}
-              aria-label="Centered Heading"
-            >
-              <i className="ph ph-text-h-one"></i>
-            </button>
-          </WarmTooltip>
-
-          <span className="toolbar-divider" aria-hidden="true" />
-
-          <WarmTooltip content="Insert Hash" shortcut="#" side="top">
-            <button
-              type="button"
-              className="tool-btn"
-              onClick={() => onInsert('# ')}
-              aria-label="Insert #"
-            >
-              <i className="ph ph-hash"></i>
-            </button>
-          </WarmTooltip>
-
-          <WarmTooltip content="Insert Bullet Dot" shortcut="•" side="top">
-            <button
-              type="button"
-              className="tool-btn"
-              onClick={() => onInsert('• ')}
-              aria-label="Insert Bullet Dot"
-            >
-              <i className="ph-fill ph-dot-outline"></i>
-            </button>
-          </WarmTooltip>
-
-          <WarmTooltip content="Insert Arrow" shortcut="→" side="top">
-            <button
-              type="button"
-              className="tool-btn"
-              onClick={() => onInsert('→ ')}
-              aria-label="Insert Arrow"
-            >
-              <i className="ph ph-arrow-right"></i>
-            </button>
-          </WarmTooltip>
-
-          <WarmTooltip content="Insert Star" shortcut="★" side="top">
-            <button
-              type="button"
-              className="tool-btn"
-              onClick={() => onInsert('★ ')}
-              aria-label="Insert Star"
-            >
-              <i className="ph ph-star"></i>
-            </button>
-          </WarmTooltip>
-
-          <WarmTooltip content="Clear Formatting" shortcut="⌘\\" side="top">
-            <button
-              type="button"
-              className="tool-btn"
-              onClick={() => onCommand('removeFormat')}
-              aria-label="Clear Formatting"
-            >
-              <i className="ph ph-eraser"></i>
-            </button>
-          </WarmTooltip>
+          {TOOL_GROUPS.map((group, gIdx) => (
+            <React.Fragment key={gIdx}>
+              {gIdx > 0 && <span className="toolbar-divider" aria-hidden="true" />}
+              {group.map((tool) => (
+                <WarmTooltip
+                  key={tool.id}
+                  content={tool.label}
+                  shortcut={tool.shortcut}
+                  side="top"
+                >
+                  <button
+                    type="button"
+                    className="tool-btn"
+                    onClick={() => handleTrigger(tool)}
+                    aria-label={tool.label}
+                  >
+                    <i className={tool.icon}></i>
+                  </button>
+                </WarmTooltip>
+              ))}
+            </React.Fragment>
+          ))}
         </div>
       </div>
     </WarmTooltipGroup>

@@ -10,6 +10,16 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: false
+    sourcemap: false,
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom'],
+          'ui-primitives': ['motion', '@hugeicons/react', '@hugeicons/core-free-icons'],
+          'pdf-export': ['jspdf']
+        }
+      }
+    }
   }
 });

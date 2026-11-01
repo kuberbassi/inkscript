@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import { getThemeTokens, STENCIL_COLORS } from '../constants/studioTokens';
 import { GeneratedPage } from '../types/studio';
 import HoldButton from './reactbits/HoldButton';
 import WarmTooltip, { WarmTooltipGroup } from './reactbits/WarmTooltip';
@@ -23,6 +24,7 @@ export const OutputGallery: React.FC<OutputGalleryProps> = ({
   onDownloadPDF
 }) => {
   const [zoomedPage, setZoomedPage] = useState<GeneratedPage | null>(null);
+  const tokens = useMemo(() => getThemeTokens(darkMode), [darkMode]);
 
   return (
     <WarmTooltipGroup delay={300} warmWindow={400}>
@@ -40,7 +42,11 @@ export const OutputGallery: React.FC<OutputGalleryProps> = ({
           </div>
           {pages.length > 0 && (
             <div className="output-actions">
-              <WarmTooltip content="Export full-bleed A4 PDF" shortcut="PDF" side="top">
+              <WarmTooltip
+                content="Export full-bleed A4 PDF"
+                shortcut="PDF"
+                side="top"
+              >
                 <button
                   type="button"
                   className="button imp-button"
@@ -61,12 +67,16 @@ export const OutputGallery: React.FC<OutputGalleryProps> = ({
                     size="sm"
                     radius={10}
                     holdTime={1100}
-                    backgroundColor={darkMode ? '#18181b' : '#e4e4e7'}
-                    fillColor="#ef4444"
-                    textColor={darkMode ? '#f4f4f5' : '#18181b'}
+                    backgroundColor={tokens.surfaceElevated}
+                    fillColor={STENCIL_COLORS.ERROR_RED}
+                    textColor={tokens.textChip}
                     fillTextColor="#ffffff"
-                    icon={<i className="ph ph-trash" style={{ fontSize: '14px' }}></i>}
-                    doneIcon={<i className="ph ph-check" style={{ fontSize: '14px' }}></i>}
+                    icon={
+                      <i className="ph ph-trash" style={{ fontSize: '14px' }}></i>
+                    }
+                    doneIcon={
+                      <i className="ph ph-check" style={{ fontSize: '14px' }}></i>
+                    }
                     doneLabel="Cleared"
                     onHold={onClearAll}
                   >
@@ -85,7 +95,9 @@ export const OutputGallery: React.FC<OutputGalleryProps> = ({
                 <i className="ph ph-stack"></i>
               </div>
               <div className="output-empty-text">
-                <span className="output-empty-title">No sheets rendered yet</span>
+                <span className="output-empty-title">
+                  No sheets rendered yet
+                </span>
                 <span className="output-empty-sub">
                   Configure your pen &amp; stencil settings above, then click{' '}
                   <strong>Generate High-Res Sheet</strong> to render print-ready

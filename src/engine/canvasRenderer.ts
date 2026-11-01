@@ -1,10 +1,11 @@
+import { SHEET_GEOMETRY, STENCIL_COLORS } from '../constants/studioTokens';
 import { GeneratedPage, StudioSettings } from '../types/studio';
 import { applyHumanRealismToDOM } from './humanizer';
 import { extractLogicalUnits, joinLogicalLines } from './markdownParser';
 import { SeededRandom } from './prng';
 
-const PAGE_WIDTH = 400;
-const PAGE_HEIGHT = 564;
+const PAGE_WIDTH = SHEET_GEOMETRY.WIDTH_PX;
+const PAGE_HEIGHT = SHEET_GEOMETRY.HEIGHT_PX;
 
 function isHeadingBlock(blockHTML: string): boolean {
   const plain = blockHTML
@@ -139,7 +140,7 @@ export async function renderCurrentSheetToCanvas(
   ctx.scale(scale, scale);
 
   // 1. Page Background (Clean White or Uploaded Custom Sheet Image)
-  ctx.fillStyle = '#ffffff';
+  ctx.fillStyle = STENCIL_COLORS.PAPER_BG;
   ctx.fillRect(0, 0, PAGE_WIDTH, PAGE_HEIGHT);
 
   if (settings.customPaperBgUrl) {
@@ -151,14 +152,23 @@ export async function renderCurrentSheetToCanvas(
     }
   }
 
-  const topMarginOffset = settings.showTopMargin ? 50 : 0;
-  const lineGap = Math.max(14, Math.round(settings.lineGapPx || exactLineHeightPx));
-  const leftMarginPos = Math.max(0, Math.round(settings.leftPaddingPx) - 6);
+  const topMarginOffset = settings.showTopMargin
+    ? SHEET_GEOMETRY.TOP_MARGIN_HEIGHT_PX
+    : 0;
+  const lineGap = Math.max(
+    SHEET_GEOMETRY.MIN_LINE_GAP_PX,
+    Math.round(settings.lineGapPx || exactLineHeightPx)
+  );
+  const leftMarginPos = Math.max(
+    0,
+    Math.round(settings.leftPaddingPx) -
+      SHEET_GEOMETRY.LEFT_MARGIN_LINE_OFFSET_PX
+  );
 
   // 2. Crisp Vector Ruled Horizontal Lines (Locked to sheet stencil; starts strictly at row 1 below top margin)
   if (settings.showRuledLines && !settings.customPaperBgUrl) {
     ctx.save();
-    ctx.strokeStyle = '#999999';
+    ctx.strokeStyle = STENCIL_COLORS.RULED_LINE;
     ctx.lineWidth = 1.05;
     let lineY = topMarginOffset + lineGap - 0.6;
     while (lineY < PAGE_HEIGHT - 2) {
@@ -174,14 +184,14 @@ export async function renderCurrentSheetToCanvas(
   // 3. Independent Vector Top Margin & Full-Height Left Margin Lines (Single 1.5px stroke each)
   if (!settings.customPaperBgUrl) {
     ctx.save();
-    ctx.strokeStyle = '#f472b6';
+    ctx.strokeStyle = STENCIL_COLORS.MARGIN_LINE;
     ctx.lineWidth = 1.5;
 
     if (settings.showTopMargin) {
-      // Horizontal top margin line at y = 50
+      // Horizontal top margin line at y = TOP_MARGIN_HEIGHT_PX
       ctx.beginPath();
-      ctx.moveTo(0, 50);
-      ctx.lineTo(PAGE_WIDTH, 50);
+      ctx.moveTo(0, SHEET_GEOMETRY.TOP_MARGIN_HEIGHT_PX);
+      ctx.lineTo(PAGE_WIDTH, SHEET_GEOMETRY.TOP_MARGIN_HEIGHT_PX);
       ctx.stroke();
     }
 
@@ -525,7 +535,9 @@ export async function generateHandwrittenPages(
     paperContentEl.style.alignSelf = 'flex-start';
     paperContentEl.style.paddingBottom = '6px';
 
-    const maxPageHeight = settings.showTopMargin ? 490 : 534;
+    const maxPageHeight = settings.showTopMargin
+      ? SHEET_GEOMETRY.MAX_CONTENT_HEIGHT_WITH_TOP_MARGIN
+      : SHEET_GEOMETRY.MAX_CONTENT_HEIGHT_WITHOUT_TOP_MARGIN;
     const totalScrollHeight = paperContentEl.scrollHeight;
 
     if (totalScrollHeight > maxPageHeight && blocks.length > 1) {

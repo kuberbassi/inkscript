@@ -7,6 +7,13 @@ import Aurora from './components/reactbits/Aurora';
 import { CallChipStatus } from './components/reactbits/CallChip';
 import ClickSpark from './components/reactbits/ClickSpark';
 import WarmTooltip, { WarmTooltipGroup } from './components/reactbits/WarmTooltip';
+import {
+  DEFAULT_INITIAL_HTML,
+  getAuroraStopsForInk,
+  getThemeTokens,
+  SHEET_GEOMETRY,
+  STORAGE_KEYS
+} from './constants/studioTokens';
 import { generateHandwrittenPages } from './engine/canvasRenderer';
 import {
   htmlToMarkdown,
@@ -14,90 +21,67 @@ import {
   sanitizeRichHTMLToHandwriting
 } from './engine/markdownParser';
 import { exportPagesToPDF } from './engine/pdfExporter';
-import {
-  DEFAULT_INITIAL_HTML,
-  DEFAULT_SETTINGS,
-  GeneratedPage,
-  SheetPreset,
-  StudioSettings
-} from './types/studio';
+import { useStudioState } from './hooks/useStudioState';
+import { GeneratedPage } from './types/studio';
 
-const STORAGE_KEY_SETTINGS = 'hw_studio_v3_settings';
-const STORAGE_KEY_CONTENT = 'hw_studio_v3_content';
+function stripInlineFontOverrides(el: HTMLElement): void {
+  const styledEls = el.querySelectorAll<HTMLElement>('[style], font');
+  styledEls.forEach((child) => {
+    if (child.style) {
+      child.style.fontSize = '';
+      child.style.fontFamily = '';
+      child.style.lineHeight = '';
+      child.style.color = '';
+    }
+    if (child.tagName.toLowerCase() === 'font') {
+      child.removeAttribute('size');
+      child.removeAttribute('face');
+      child.removeAttribute('color');
+    }
+  });
+}
 
 export const App: React.FC = () => {
-  const [settings, setSettings] = useState<StudioSettings>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_SETTINGS);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        const fallbackMargin = parsed.showMarginLine ?? true;
-        return {
-          ...DEFAULT_SETTINGS,
-          ...parsed,
-          showTopMargin: parsed.showTopMargin ?? fallbackMargin,
-          showLeftMargin: parsed.showLeftMargin ?? fallbackMargin,
-          lineGapPx: parsed.lineGapPx ?? DEFAULT_SETTINGS.lineGapPx,
-          // Migrate legacy default topPaddingPx=5 to 0 so ruled lines never shift
-          topPaddingPx: parsed.topPaddingPx === 5 ? 0 : (parsed.topPaddingPx ?? 0)
-        };
-      }
-    } catch {
-      // Ignore storage error
-    }
-    return DEFAULT_SETTINGS;
-  });
+  const {
+    settings,
+    expandedScale,
+    exactLineHeightPx,
+    smartBaselineOffsetPx,
+    updateSettings,
+    handlePresetChange,
+    handleUploadFont,
+    handleUploadPaperBg,
+    handleClearPaperBg
+  } = useStudioState();
 
   const [pages, setPages] = useState<GeneratedPage[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [chipStatus, setChipStatus] = useState<CallChipStatus>('idle');
   const [isDrawOpen, setIsDrawOpen] = useState(false);
   const [isExpandedEditor, setIsExpandedEditor] = useState(false);
-  const [expandedScale, setExpandedScale] = useState(1.24);
 
   const pageElRef = useRef<HTMLDivElement | null>(null);
   const paperContentRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
-  // Dynamically size Pop-Up View scale so the modal never needs a vertical scrollbar
-  useEffect(() => {
-    const updateModalScale = () => {
-      const vh = window.innerHeight || 900;
-      const availableSheetHeight = vh * 0.94 - 104;
-      const fitScale = Math.min(1.38, Math.max(1.02, availableSheetHeight / 564));
-      setExpandedScale(Number(fitScale.toFixed(3)));
-    };
-    updateModalScale();
-    window.addEventListener('resize', updateModalScale);
-    return () => window.removeEventListener('resize', updateModalScale);
-  }, []);
+  const tokens = useMemo(
+    () => getThemeTokens(settings.darkMode),
+    [settings.darkMode]
+  );
 
-  // Strip any leftover inline font-size/font-family/line-height from saved content
-  const cleanInlineFontOverrides = useCallback((el: HTMLElement) => {
-    const styledEls = el.querySelectorAll<HTMLElement>('[style], font');
-    styledEls.forEach((child) => {
-      if (child.style) {
-        child.style.fontSize = '';
-        child.style.fontFamily = '';
-        child.style.lineHeight = '';
-        child.style.color = '';
-      }
-      if (child.tagName.toLowerCase() === 'font') {
-        child.removeAttribute('size');
-        child.removeAttribute('face');
-        child.removeAttribute('color');
-      }
-    });
-  }, []);
+  const auroraStops = useMemo(
+    () => getAuroraStopsForInk(settings.inkColor),
+    [settings.inkColor]
+  );
 
   // Load initial editor content once
   useEffect(() => {
     if (paperContentRef.current) {
-      const savedContent = localStorage.getItem(STORAGE_KEY_CONTENT);
+      const savedContent = localStorage.getItem(STORAGE_KEYS.CONTENT);
       paperContentRef.current.innerHTML = savedContent || DEFAULT_INITIAL_HTML;
-      cleanInlineFontOverrides(paperContentRef.current);
+      stripInlineFontOverrides(paperContentRef.current);
     }
-  }, [cleanInlineFontOverrides]);
+  }, []);
 
   // Close expanded editor on Escape key
   useEffect(() => {
@@ -111,128 +95,11 @@ export const App: React.FC = () => {
     return () => window.removeEventListener('keydown', onKey);
   }, [isExpandedEditor]);
 
-  // Save settings to localStorage and sync body theme class
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(settings));
-    } catch {
-      // Ignore storage quota error
-    }
-    document.body.classList.toggle('dark', settings.darkMode);
-  }, [settings]);
-
-  // Page Lines Gap is FIXED unless changed in Sheet Stencil & Page Lines!
-  // Font Size changes only glyph size, while text lines stay locked to lineGapPx.
-  const exactLineHeightPx = useMemo(() => {
-    return Math.max(14, Math.round(settings.lineGapPx || 21));
-  }, [settings.lineGapPx]);
-
-  // Smart baseline compensation: when Font Size changes relative to the fixed lineGapPx,
-  // compute a subtle vertical baseline shift so glyphs always rest right on the ruled line.
-  const smartBaselineOffsetPx = useMemo(() => {
-    const fontSizePx = (settings.fontSizePt * 4) / 3;
-    const naturalGap = fontSizePx * 1.43;
-    const diff = exactLineHeightPx - naturalGap;
-    return Math.max(0, Math.round(settings.topPaddingPx + diff * 0.18));
-  }, [settings.fontSizePt, exactLineHeightPx, settings.topPaddingPx]);
-
-  // Sync CSS custom variables for the Live Sheet Preview
-  useEffect(() => {
-    const lineStopPx = Math.max(1, +(exactLineHeightPx - 1.2).toFixed(2));
-    const leftMarginPos = Math.max(0, Math.round(settings.leftPaddingPx) - 6);
-
-    const fontToUse = settings.customFontName
-      ? `'${settings.customFontName}', cursive`
-      : settings.handwritingFont;
-
-    document.body.style.setProperty('--handwriting-font', fontToUse);
-    document.body.style.setProperty('--ink-color', settings.inkColor);
-    document.body.style.setProperty(
-      '--line-height-val',
-      `${exactLineHeightPx}px`
-    );
-    document.body.style.setProperty('--line-stop-px', `${lineStopPx}px`);
-    document.body.style.setProperty('--line-bg-offset', '0px');
-    document.body.style.setProperty('--left-margin-pos', `${leftMarginPos}px`);
-  }, [settings, exactLineHeightPx]);
-
-  const updateSettings = useCallback((partial: Partial<StudioSettings>) => {
-    setSettings((prev) => ({ ...prev, ...partial }));
-  }, []);
-
-  const handlePresetChange = useCallback((preset: SheetPreset) => {
-    if (preset === 'blank') {
-      setSettings((prev) => ({
-        ...prev,
-        sheetPreset: 'blank',
-        customPaperBgUrl: null,
-        showRuledLines: false,
-        showTopMargin: false,
-        showLeftMargin: false,
-        showMarginLine: false,
-        lineGapPx: 22,
-        topPaddingPx: 24,
-        leftPaddingPx: 28
-      }));
-    } else {
-      setSettings((prev) => ({
-        ...prev,
-        sheetPreset: 'default',
-        customPaperBgUrl: null,
-        showRuledLines: true,
-        showTopMargin: true,
-        showLeftMargin: true,
-        showMarginLine: true,
-        lineGapPx: 21,
-        topPaddingPx: 0,
-        leftPaddingPx: 55
-      }));
-    }
-  }, []);
-
-  const handleUploadFont = useCallback(async (file: File) => {
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const buffer = e.target?.result as ArrayBuffer;
-      if (!buffer) return;
-      const fontName = `custom-hw-${Date.now()}`;
-      const face = new FontFace(fontName, buffer);
-      const loadedFace = await face.load();
-      document.fonts.add(loadedFace);
-      setSettings((prev) => ({
-        ...prev,
-        customFontName: fontName
-      }));
-    };
-    reader.readAsArrayBuffer(file);
-  }, []);
-
-  const handleUploadPaperBg = useCallback((file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const dataUrl = e.target?.result as string;
-      if (!dataUrl) return;
-      setSettings((prev) => ({
-        ...prev,
-        customPaperBgUrl: dataUrl,
-        showRuledLines: false,
-        showTopMargin: false,
-        showLeftMargin: false,
-        showMarginLine: false
-      }));
-    };
-    reader.readAsDataURL(file);
-  }, []);
-
-  const handleClearPaperBg = useCallback(() => {
-    handlePresetChange(settings.sheetPreset);
-  }, [handlePresetChange, settings.sheetPreset]);
-
   const saveEditorContent = useCallback(() => {
     if (paperContentRef.current) {
       try {
         localStorage.setItem(
-          STORAGE_KEY_CONTENT,
+          STORAGE_KEYS.CONTENT,
           paperContentRef.current.innerHTML
         );
       } catch {
@@ -261,11 +128,11 @@ export const App: React.FC = () => {
 
       document.execCommand('insertHTML', false, finalHTML);
       if (paperContentRef.current) {
-        cleanInlineFontOverrides(paperContentRef.current);
+        stripInlineFontOverrides(paperContentRef.current);
       }
       saveEditorContent();
     },
-    [saveEditorContent, cleanInlineFontOverrides]
+    [saveEditorContent]
   );
 
   const handleCopy = useCallback((e: React.ClipboardEvent<HTMLDivElement>) => {
@@ -335,8 +202,7 @@ export const App: React.FC = () => {
 
   const handleGenerate = useCallback(async () => {
     if (!pageElRef.current || !paperContentRef.current) return;
-    const wasExpanded = isExpandedEditor;
-    if (wasExpanded) {
+    if (isExpandedEditor) {
       setIsExpandedEditor(false);
       await new Promise((r) => setTimeout(r, 60));
     }
@@ -344,7 +210,6 @@ export const App: React.FC = () => {
     setIsGenerating(true);
     setChipStatus('running');
 
-    // Allow React to paint the CallChip running state and start its live timer smoothly
     await new Promise((r) => setTimeout(r, 120));
 
     try {
@@ -397,18 +262,6 @@ export const App: React.FC = () => {
     exportPagesToPDF(pages);
   }, [pages]);
 
-  // Dynamic colorful Aurora stops synced with active Ink Color in both Dark & Light themes
-  const auroraStops = useMemo(() => {
-    const ink = settings.inkColor || '#1a2f7d';
-    if (ink === '#1a1a1a') {
-      return ['#4f46e5', '#0ea5e9', '#8b5cf6'];
-    }
-    if (ink === '#ba3807') {
-      return ['#ef4444', '#f43f5e', '#f97316'];
-    }
-    return ['#3b82f6', '#6366f1', '#0ea5e9'];
-  }, [settings.inkColor]);
-
   const pageClassNames = [
     'page-a',
     settings.showTopMargin ? 'top-margined' : '',
@@ -419,12 +272,12 @@ export const App: React.FC = () => {
     .filter(Boolean)
     .join(' ');
 
-  const modalZoomWidth = Math.round(400 * expandedScale);
-  const modalZoomHeight = Math.round(564 * expandedScale);
+  const modalZoomWidth = Math.round(SHEET_GEOMETRY.WIDTH_PX * expandedScale);
+  const modalZoomHeight = Math.round(SHEET_GEOMETRY.HEIGHT_PX * expandedScale);
 
   return (
     <ClickSpark
-      sparkColor={settings.darkMode ? ['#ffffff', '#a1a1aa'] : ['#18181b', '#52525b']}
+      sparkColor={tokens.sparkColors}
       sparkSize={10}
       sparkRadius={22}
       sparkCount={8}
@@ -440,7 +293,7 @@ export const App: React.FC = () => {
           blend={0.55}
           speed={0.75}
           height={0.55}
-          opacity={settings.darkMode ? 0.34 : 0.28}
+          opacity={tokens.auroraOpacity}
           lightMode={!settings.darkMode}
           mouseInteraction
         />
@@ -462,7 +315,11 @@ export const App: React.FC = () => {
 
             <div className="header-actions">
               <WarmTooltip
-                content={settings.darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                content={
+                  settings.darkMode
+                    ? 'Switch to Light Mode'
+                    : 'Switch to Dark Mode'
+                }
                 shortcut="Theme"
                 side="bottom"
               >
@@ -470,7 +327,9 @@ export const App: React.FC = () => {
                   type="button"
                   className="dark-mode-toggle"
                   aria-label="Toggle Theme"
-                  onClick={() => updateSettings({ darkMode: !settings.darkMode })}
+                  onClick={() =>
+                    updateSettings({ darkMode: !settings.darkMode })
+                  }
                 >
                   {settings.darkMode ? (
                     <i className="ph ph-sun" style={{ fontSize: '17px' }}></i>
@@ -484,7 +343,6 @@ export const App: React.FC = () => {
 
           <section className="generate-image-section">
             <div className="display-flex output-grid responsive-flex">
-              {/* Backdrop when Sheet Canvas is in Expanded Pop-Up View */}
               {isExpandedEditor && (
                 <div
                   className="sheet-modal-backdrop"
@@ -509,7 +367,9 @@ export const App: React.FC = () => {
                 <div className="section-header-row">
                   <div className="section-header-title-group">
                     <h2 style={{ margin: 0 }}>
-                      {isExpandedEditor ? 'Expanded Sheet Editor' : 'Sheet Canvas'}
+                      {isExpandedEditor
+                        ? 'Expanded Sheet Editor'
+                        : 'Sheet Canvas'}
                     </h2>
                     <span className="sheet-live-pill">Live</span>
                   </div>

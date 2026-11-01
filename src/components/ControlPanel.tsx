@@ -1,17 +1,28 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo } from 'react';
 import {
   DEFAULT_SETTINGS,
+  getThemeTokens,
   HANDWRITING_FONTS,
   INK_COLOR_PRESETS,
-  PageSurfaceEffect,
+  PAGE_SIZE_OPTIONS,
   REALISM_PRESETS,
-  SheetPreset,
-  StudioSettings
-} from '../types/studio';
+  RESOLUTION_OPTIONS,
+  SHEET_GEOMETRY,
+  SHEET_PRESET_OPTIONS,
+  STENCIL_COLORS,
+  SURFACE_OPTIONS
+} from '../constants/studioTokens';
+import { PageSurfaceEffect, SheetPreset, StudioSettings } from '../types/studio';
 import CallChip, { CallChipStatus } from './reactbits/CallChip';
-import GlideSelect, { GlideSelectOption } from './reactbits/GlideSelect';
+import { GlideSelectOption } from './reactbits/GlideSelect';
 import ScrubField from './reactbits/ScrubField';
 import WarmTooltip, { WarmTooltipGroup } from './reactbits/WarmTooltip';
+import {
+  CustomizerCard,
+  PropFileActionField,
+  PropSelectField,
+  PropSwitchField
+} from './ui/StudioPrimitives';
 
 interface ControlPanelProps {
   settings: StudioSettings;
@@ -38,22 +49,10 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   onClearPaperBg,
   onGenerate
 }) => {
-  const paperFileInputRef = useRef<HTMLInputElement | null>(null);
-  const fontFileInputRef = useRef<HTMLInputElement | null>(null);
-
-  const handlePaperFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      onUploadPaperBg(file);
-    }
-  };
-
-  const handleClearPaper = () => {
-    if (paperFileInputRef.current) {
-      paperFileInputRef.current.value = '';
-    }
-    onClearPaperBg();
-  };
+  const tokens = useMemo(
+    () => getThemeTokens(settings.darkMode),
+    [settings.darkMode]
+  );
 
   const handleRerollSeed = () => {
     onUpdate({ realismSeed: Math.floor(Math.random() * 900000) + 10000 });
@@ -66,6 +65,21 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
     });
   };
 
+  const handleToggleLeftMargin = () => {
+    const nextLeft = !settings.showLeftMargin;
+    const nextLeftPad = nextLeft
+      ? settings.leftPaddingPx < 36
+        ? SHEET_GEOMETRY.DEFAULT_LEFT_PAD_WITH_MARGIN
+        : settings.leftPaddingPx
+      : settings.leftPaddingPx === SHEET_GEOMETRY.DEFAULT_LEFT_PAD_WITH_MARGIN
+        ? SHEET_GEOMETRY.DEFAULT_LEFT_PAD_WITHOUT_MARGIN
+        : settings.leftPaddingPx;
+    onUpdate({
+      showLeftMargin: nextLeft,
+      leftPaddingPx: nextLeftPad
+    });
+  };
+
   const fontOptions: GlideSelectOption[] = useMemo(
     () =>
       HANDWRITING_FONTS.map((f) => ({
@@ -75,7 +89,9 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             {f.shortLabel}
           </span>
         ),
-        tag: f.label.includes('(') ? f.label.split('(')[1].replace(')', '') : undefined
+        tag: f.label.includes('(')
+          ? f.label.split('(')[1].replace(')', '')
+          : undefined
       })),
     []
   );
@@ -108,80 +124,14 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
     []
   );
 
-  const surfaceOptions: GlideSelectOption[] = useMemo(
-    () => [
-      {
-        value: 'no-effect',
-        label: 'Clean White',
-        tag: 'Print'
-      },
-      {
-        value: 'shadows',
-        label: 'Soft Shadow',
-        tag: 'Depth'
-      },
-      {
-        value: 'scanner',
-        label: 'Scanner Effect',
-        tag: 'Scan'
-      }
-    ],
-    []
-  );
-
-  const resolutionOptions: GlideSelectOption[] = useMemo(
-    () => [
-      { value: '2', label: 'Standard (2×)', tag: '150 DPI' },
-      { value: '3', label: 'High (3×)', tag: '220 DPI' },
-      { value: '4', label: 'Very High (4×)', tag: '300 DPI' },
-      { value: '5', label: 'Ultra High (5×)', tag: '400 DPI' },
-      { value: '6', label: 'Max Print (6×)', tag: '500 DPI' }
-    ],
-    []
-  );
-
-  const presetOptions: GlideSelectOption[] = useMemo(
-    () => [
-      {
-        value: 'default',
-        label: 'Ruled Notebook',
-        tag: 'Ruled'
-      },
-      {
-        value: 'blank',
-        label: 'Blank White',
-        tag: 'Plain'
-      }
-    ],
-    []
-  );
-
-  const pageSizeOptions: GlideSelectOption[] = useMemo(
-    () => [
-      {
-        value: 'a4',
-        label: 'A4 Standard',
-        tag: '210×297'
-      }
-    ],
-    []
-  );
-
-  const surfaceChip = settings.darkMode ? '#27272a' : '#e4e4e7';
-  const highlightChip = settings.darkMode ? '#3f3f46' : '#d4d4d8';
-  const textChip = settings.darkMode ? '#f4f4f5' : '#18181b';
-  const accentChip = settings.darkMode ? '#f4f4f5' : '#18181b';
-
   return (
     <WarmTooltipGroup delay={300} warmWindow={400}>
       <div className="customization-col">
         {/* Card 1: Pen, Realism & Print Customize */}
-        <div className="customizer-card">
-          <div className="customizer-card-header">
-            <div className="customizer-card-title">
-              <i className="ph ph-pen-nib"></i>
-              <span>Customize Pen &amp; Realism</span>
-            </div>
+        <CustomizerCard
+          icon="ph-pen-nib"
+          title="Customize Pen & Realism"
+          headerActions={
             <div className="flex items-center gap-1.5">
               <WarmTooltip
                 content={`Re-roll variation seed (#${settings.realismSeed})`}
@@ -208,413 +158,240 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 </button>
               </WarmTooltip>
             </div>
+          }
+        >
+          <div className="customizer-grid-3">
+            <PropSelectField
+              label="Font"
+              value={settings.handwritingFont}
+              options={fontOptions}
+              tokens={tokens}
+              menuWidth={240}
+              ariaLabel="Select Handwriting Font"
+              onChange={(val) =>
+                onUpdate({ handwritingFont: val, customFontName: null })
+              }
+            />
+            <PropSelectField
+              label="Ink"
+              value={settings.inkColor}
+              options={inkOptions}
+              tokens={tokens}
+              menuWidth={210}
+              ariaLabel="Select Ink Color"
+              onChange={(val) => onUpdate({ inkColor: val })}
+            />
+            <PropSelectField
+              label="Realism"
+              value={String(settings.realismIntensity)}
+              options={realismOptions}
+              tokens={tokens}
+              menuWidth={210}
+              ariaLabel="Select Human Realism"
+              onChange={(val) => onUpdate({ realismIntensity: Number(val) })}
+            />
           </div>
 
-          <div className="customizer-card-body">
-            {/* Row 1: Font & Ink & Realism */}
-            <div className="customizer-grid-3">
-              <div className="prop-cell">
-                <span className="prop-label">Font</span>
-                <div className="prop-control">
-                  <GlideSelect
-                    options={fontOptions}
-                    value={settings.handwritingFont}
-                    onChange={(val) =>
-                      onUpdate({ handwritingFont: val, customFontName: null })
-                    }
-                    surfaceColor={surfaceChip}
-                    highlightColor={highlightChip}
-                    textColor={textChip}
-                    accentColor={accentChip}
-                    size="sm"
-                    radius={8}
-                    menuWidth={240}
-                    align="right"
-                    ariaLabel="Select Handwriting Font"
-                  />
-                </div>
-              </div>
-
-              <div className="prop-cell">
-                <span className="prop-label">Ink</span>
-                <div className="prop-control">
-                  <GlideSelect
-                    options={inkOptions}
-                    value={settings.inkColor}
-                    onChange={(val) => onUpdate({ inkColor: val })}
-                    surfaceColor={surfaceChip}
-                    highlightColor={highlightChip}
-                    textColor={textChip}
-                    accentColor={accentChip}
-                    size="sm"
-                    radius={8}
-                    menuWidth={210}
-                    align="right"
-                    ariaLabel="Select Ink Color"
-                  />
-                </div>
-              </div>
-
-              <div className="prop-cell">
-                <span className="prop-label">Realism</span>
-                <div className="prop-control">
-                  <GlideSelect
-                    options={realismOptions}
-                    value={String(settings.realismIntensity)}
-                    onChange={(val) =>
-                      onUpdate({ realismIntensity: Number(val) })
-                    }
-                    surfaceColor={surfaceChip}
-                    highlightColor={highlightChip}
-                    textColor={textChip}
-                    accentColor={accentChip}
-                    size="sm"
-                    radius={8}
-                    menuWidth={210}
-                    align="right"
-                    ariaLabel="Select Human Realism"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Row 2: Surface, Resolution, Page Size */}
-            <div className="customizer-grid-3">
-              <div className="prop-cell">
-                <span className="prop-label">Surface</span>
-                <div className="prop-control">
-                  <GlideSelect
-                    options={surfaceOptions}
-                    value={settings.pageEffect}
-                    onChange={(val) =>
-                      onUpdate({ pageEffect: val as PageSurfaceEffect })
-                    }
-                    surfaceColor={surfaceChip}
-                    highlightColor={highlightChip}
-                    textColor={textChip}
-                    accentColor={accentChip}
-                    size="sm"
-                    radius={8}
-                    menuWidth={200}
-                    align="right"
-                    ariaLabel="Select Page Surface"
-                  />
-                </div>
-              </div>
-
-              <div className="prop-cell">
-                <span className="prop-label">Scale</span>
-                <div className="prop-control">
-                  <GlideSelect
-                    options={resolutionOptions}
-                    value={String(settings.exportScale)}
-                    onChange={(val) =>
-                      onUpdate({ exportScale: Number(val) || 4 })
-                    }
-                    surfaceColor={surfaceChip}
-                    highlightColor={highlightChip}
-                    textColor={textChip}
-                    accentColor={accentChip}
-                    size="sm"
-                    radius={8}
-                    menuWidth={210}
-                    align="right"
-                    ariaLabel="Select Export Resolution"
-                  />
-                </div>
-              </div>
-
-              <div className="prop-cell">
-                <span className="prop-label">Format</span>
-                <div className="prop-control">
-                  <GlideSelect
-                    options={pageSizeOptions}
-                    value={settings.pageSize}
-                    disabled
-                    surfaceColor={surfaceChip}
-                    highlightColor={highlightChip}
-                    textColor={textChip}
-                    accentColor={accentChip}
-                    size="sm"
-                    radius={8}
-                    menuWidth={180}
-                    align="right"
-                    ariaLabel="Page Size"
-                  />
-                </div>
-              </div>
-            </div>
+          <div className="customizer-grid-3">
+            <PropSelectField
+              label="Surface"
+              value={settings.pageEffect}
+              options={SURFACE_OPTIONS}
+              tokens={tokens}
+              menuWidth={200}
+              ariaLabel="Select Page Surface"
+              onChange={(val) =>
+                onUpdate({ pageEffect: val as PageSurfaceEffect })
+              }
+            />
+            <PropSelectField
+              label="Scale"
+              value={String(settings.exportScale)}
+              options={RESOLUTION_OPTIONS}
+              tokens={tokens}
+              menuWidth={210}
+              ariaLabel="Select Export Resolution"
+              onChange={(val) => onUpdate({ exportScale: Number(val) || 4 })}
+            />
+            <PropSelectField
+              label="Format"
+              value={settings.pageSize}
+              options={PAGE_SIZE_OPTIONS}
+              tokens={tokens}
+              menuWidth={180}
+              disabled
+              ariaLabel="Page Size"
+            />
           </div>
-        </div>
+        </CustomizerCard>
 
-        {/* Card 2: ScrubField Numeric Customizer (Drag to Scrub / Click to Type) */}
-        <div className="customizer-card">
-          <div className="customizer-card-header">
-            <div className="customizer-card-title">
-              <i className="ph ph-sliders-horizontal"></i>
-              <span>Typography &amp; Spacing</span>
-            </div>
-            <span className="customizer-badge">Drag to scrub · Click to type</span>
+        {/* Card 2: ScrubField Numeric Customizer */}
+        <CustomizerCard
+          icon="ph-sliders-horizontal"
+          title="Typography & Spacing"
+          badge="Drag to scrub · Click to type"
+        >
+          <div className="customizer-grid-3">
+            <ScrubField
+              label="Font Size"
+              suffix="pt"
+              value={settings.fontSizePt}
+              defaultValue={DEFAULT_SETTINGS.fontSizePt}
+              min={6}
+              max={26}
+              step={0.5}
+              sensitivity={3}
+              size="md"
+              fullWidth
+              accent={tokens.accentChip}
+              chipColor={tokens.surfaceChip}
+              onChange={(v) => onUpdate({ fontSizePt: v })}
+            />
+
+            <ScrubField
+              label="Word Gap"
+              suffix="px"
+              value={settings.wordSpacingPx}
+              defaultValue={DEFAULT_SETTINGS.wordSpacingPx}
+              min={-6}
+              max={40}
+              step={0.5}
+              sensitivity={3}
+              size="md"
+              fullWidth
+              accent={tokens.accentChip}
+              chipColor={tokens.surfaceChip}
+              onChange={(v) => onUpdate({ wordSpacingPx: v })}
+            />
+
+            <ScrubField
+              label="Letter Gap"
+              suffix="pt"
+              value={settings.letterSpacingPt}
+              defaultValue={DEFAULT_SETTINGS.letterSpacingPt}
+              min={-3}
+              max={20}
+              step={0.25}
+              sensitivity={4}
+              size="md"
+              fullWidth
+              accent={tokens.accentChip}
+              chipColor={tokens.surfaceChip}
+              onChange={(v) => onUpdate({ letterSpacingPt: v })}
+            />
           </div>
 
-          <div className="customizer-card-body">
-            <div className="customizer-grid-3">
-              <ScrubField
-                label="Font Size"
-                suffix="pt"
-                value={settings.fontSizePt}
-                defaultValue={DEFAULT_SETTINGS.fontSizePt}
-                min={6}
-                max={26}
-                step={0.5}
-                sensitivity={3}
-                size="md"
-                fullWidth
-                accent={accentChip}
-                chipColor={surfaceChip}
-                onChange={(v) => onUpdate({ fontSizePt: v })}
-              />
+          <div className="customizer-grid-3">
+            <ScrubField
+              label="Top Pad"
+              suffix="px"
+              value={settings.topPaddingPx}
+              defaultValue={DEFAULT_SETTINGS.topPaddingPx}
+              min={0}
+              max={120}
+              step={1}
+              sensitivity={2}
+              size="md"
+              fullWidth
+              accent={tokens.accentChip}
+              chipColor={tokens.surfaceChip}
+              onChange={(v) => onUpdate({ topPaddingPx: v })}
+            />
 
-              <ScrubField
-                label="Word Gap"
-                suffix="px"
-                value={settings.wordSpacingPx}
-                defaultValue={DEFAULT_SETTINGS.wordSpacingPx}
-                min={-6}
-                max={40}
-                step={0.5}
-                sensitivity={3}
-                size="md"
-                fullWidth
-                accent={accentChip}
-                chipColor={surfaceChip}
-                onChange={(v) => onUpdate({ wordSpacingPx: v })}
-              />
+            <ScrubField
+              label="Left Offset"
+              suffix="px"
+              value={settings.leftPaddingPx}
+              defaultValue={DEFAULT_SETTINGS.leftPaddingPx}
+              min={0}
+              max={140}
+              step={1}
+              sensitivity={2}
+              size="md"
+              fullWidth
+              accent={tokens.accentChip}
+              chipColor={tokens.surfaceChip}
+              onChange={(v) => onUpdate({ leftPaddingPx: v })}
+            />
 
-              <ScrubField
-                label="Letter Gap"
-                suffix="pt"
-                value={settings.letterSpacingPt}
-                defaultValue={DEFAULT_SETTINGS.letterSpacingPt}
-                min={-3}
-                max={20}
-                step={0.25}
-                sensitivity={4}
-                size="md"
-                fullWidth
-                accent={accentChip}
-                chipColor={surfaceChip}
-                onChange={(v) => onUpdate({ letterSpacingPt: v })}
-              />
-            </div>
-
-            <div className="customizer-grid-3">
-              <ScrubField
-                label="Top Pad"
-                suffix="px"
-                value={settings.topPaddingPx}
-                defaultValue={DEFAULT_SETTINGS.topPaddingPx}
-                min={0}
-                max={120}
-                step={1}
-                sensitivity={2}
-                size="md"
-                fullWidth
-                accent={accentChip}
-                chipColor={surfaceChip}
-                onChange={(v) => onUpdate({ topPaddingPx: v })}
-              />
-
-              <ScrubField
-                label="Left Offset"
-                suffix="px"
-                value={settings.leftPaddingPx}
-                defaultValue={DEFAULT_SETTINGS.leftPaddingPx}
-                min={0}
-                max={140}
-                step={1}
-                sensitivity={2}
-                size="md"
-                fullWidth
-                accent={accentChip}
-                chipColor={surfaceChip}
-                onChange={(v) => onUpdate({ leftPaddingPx: v })}
-              />
-
-              <div className="prop-cell">
-                <span className="prop-label">Custom Font</span>
-                <div className="flex items-center gap-1.5">
-                  <input
-                    ref={fontFileInputRef}
-                    accept=".ttf, .otf"
-                    type="file"
-                    id="font-file"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) onUploadFont(file);
-                    }}
-                  />
-                  <button
-                    type="button"
-                    className="notion-chip-btn"
-                    onClick={() => fontFileInputRef.current?.click()}
-                  >
-                    <i className="ph ph-upload-simple"></i>
-                    <span>
-                      {settings.customFontName ? 'Loaded' : 'Upload .ttf'}
-                    </span>
-                  </button>
-                </div>
-              </div>
-            </div>
+            <PropFileActionField
+              label="Custom Font"
+              accept=".ttf, .otf"
+              icon="ph-upload-simple"
+              buttonText={settings.customFontName ? 'Loaded' : 'Upload .ttf'}
+              onSelectFile={onUploadFont}
+            />
           </div>
-        </div>
+        </CustomizerCard>
 
-        {/* Card 3: Sheet Stencil, Lines Gap & Custom Background */}
-        <div className="customizer-card">
-          <div className="customizer-card-header">
-            <div className="customizer-card-title">
-              <i className="ph ph-notebook"></i>
-              <span>Sheet Stencil &amp; Margins</span>
-            </div>
-            <span className="customizer-badge">Independent Stencil Grid</span>
+        {/* Card 3: Sheet Stencil, Independent Margins & Lines Gap */}
+        <CustomizerCard
+          icon="ph-notebook"
+          title="Sheet Stencil & Margins"
+          badge="Independent Stencil Grid"
+        >
+          <div className="customizer-grid-3">
+            <PropSelectField
+              label="Template"
+              value={settings.sheetPreset}
+              options={SHEET_PRESET_OPTIONS}
+              tokens={tokens}
+              menuWidth={210}
+              ariaLabel="Select Sheet Preset"
+              onChange={(val) => onPresetChange(val as SheetPreset)}
+            />
+
+            <ScrubField
+              label="Lines Gap"
+              suffix="px"
+              value={settings.lineGapPx}
+              defaultValue={DEFAULT_SETTINGS.lineGapPx}
+              min={SHEET_GEOMETRY.MIN_LINE_GAP_PX}
+              max={SHEET_GEOMETRY.MAX_LINE_GAP_PX}
+              step={1}
+              sensitivity={3}
+              size="md"
+              fullWidth
+              accent={tokens.accentChip}
+              chipColor={tokens.surfaceChip}
+              onChange={(v) => onUpdate({ lineGapPx: v })}
+            />
+
+            <PropFileActionField
+              label="Custom Scan"
+              accept=".jpg, .jpeg, .png"
+              icon="ph-image"
+              buttonText={settings.customPaperBgUrl ? 'Change' : 'Upload'}
+              hasActiveValue={Boolean(settings.customPaperBgUrl)}
+              onSelectFile={onUploadPaperBg}
+              onClear={onClearPaperBg}
+            />
           </div>
 
-          <div className="customizer-card-body">
-            <div className="customizer-grid-3">
-              <div className="prop-cell">
-                <span className="prop-label">Template</span>
-                <div className="prop-control">
-                  <GlideSelect
-                    options={presetOptions}
-                    value={settings.sheetPreset}
-                    onChange={(val) => onPresetChange(val as SheetPreset)}
-                    surfaceColor={surfaceChip}
-                    highlightColor={highlightChip}
-                    textColor={textChip}
-                    accentColor={accentChip}
-                    size="sm"
-                    radius={8}
-                    menuWidth={210}
-                    align="right"
-                    ariaLabel="Select Sheet Preset"
-                  />
-                </div>
-              </div>
+          <div className="customizer-grid-3">
+            <PropSwitchField
+              label="Top Margin"
+              checked={settings.showTopMargin}
+              onToggle={() =>
+                onUpdate({ showTopMargin: !settings.showTopMargin })
+              }
+            />
 
-              <ScrubField
-                label="Lines Gap"
-                suffix="px"
-                value={settings.lineGapPx}
-                defaultValue={DEFAULT_SETTINGS.lineGapPx}
-                min={14}
-                max={42}
-                step={1}
-                sensitivity={3}
-                size="md"
-                fullWidth
-                accent={accentChip}
-                chipColor={surfaceChip}
-                onChange={(v) => onUpdate({ lineGapPx: v })}
-              />
+            <PropSwitchField
+              label="Left Margin"
+              checked={settings.showLeftMargin}
+              onToggle={handleToggleLeftMargin}
+            />
 
-              <div className="prop-cell">
-                <span className="prop-label">Custom Scan</span>
-                <div className="flex items-center gap-1.5">
-                  <input
-                    ref={paperFileInputRef}
-                    accept=".jpg, .jpeg, .png"
-                    type="file"
-                    id="paper-file"
-                    className="hidden"
-                    onChange={handlePaperFileChange}
-                  />
-                  {settings.customPaperBgUrl && (
-                    <button
-                      type="button"
-                      className="notion-chip-btn danger"
-                      onClick={handleClearPaper}
-                    >
-                      Reset
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    className="notion-chip-btn"
-                    onClick={() => paperFileInputRef.current?.click()}
-                  >
-                    <i className="ph ph-image"></i>
-                    <span>
-                      {settings.customPaperBgUrl ? 'Change' : 'Upload'}
-                    </span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="customizer-grid-3">
-              <div className="prop-cell">
-                <span className="prop-label">Top Margin</span>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={settings.showTopMargin}
-                  className="notion-switch"
-                  data-checked={settings.showTopMargin ? 'true' : 'false'}
-                  onClick={() =>
-                    onUpdate({ showTopMargin: !settings.showTopMargin })
-                  }
-                >
-                  <span className="notion-switch-thumb" />
-                </button>
-              </div>
-
-              <div className="prop-cell">
-                <span className="prop-label">Left Margin</span>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={settings.showLeftMargin}
-                  className="notion-switch"
-                  data-checked={settings.showLeftMargin ? 'true' : 'false'}
-                  onClick={() => {
-                    const nextLeft = !settings.showLeftMargin;
-                    const nextLeftPad = nextLeft
-                      ? settings.leftPaddingPx < 36
-                        ? 55
-                        : settings.leftPaddingPx
-                      : settings.leftPaddingPx === 55
-                        ? 22
-                        : settings.leftPaddingPx;
-                    onUpdate({
-                      showLeftMargin: nextLeft,
-                      leftPaddingPx: nextLeftPad
-                    });
-                  }}
-                >
-                  <span className="notion-switch-thumb" />
-                </button>
-              </div>
-
-              <div className="prop-cell">
-                <span className="prop-label">Ruled Lines</span>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={settings.showRuledLines}
-                  className="notion-switch"
-                  data-checked={settings.showRuledLines ? 'true' : 'false'}
-                  onClick={() =>
-                    onUpdate({ showRuledLines: !settings.showRuledLines })
-                  }
-                >
-                  <span className="notion-switch-thumb" />
-                </button>
-              </div>
-            </div>
+            <PropSwitchField
+              label="Ruled Lines"
+              checked={settings.showRuledLines}
+              onToggle={() =>
+                onUpdate({ showRuledLines: !settings.showRuledLines })
+              }
+            />
           </div>
-        </div>
+        </CustomizerCard>
 
         {/* Action Row: Generate High-Res Sheet + Live CallChip */}
         <div className="generate-action-bar">
@@ -646,12 +423,12 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
               expectedMs={420}
               size={40}
               radius={10}
-              surfaceColor={settings.darkMode ? '#18181b' : '#e4e4e7'}
-              color={settings.darkMode ? '#f4f4f5' : '#18181b'}
-              progressColor={settings.darkMode ? '#f4f4f5' : '#18181b'}
+              surfaceColor={tokens.surfaceElevated}
+              color={tokens.textChip}
+              progressColor={tokens.textChip}
               progressOpacity={0.12}
-              doneColor="#22c55e"
-              errorColor="#ef4444"
+              doneColor={STENCIL_COLORS.DONE_GREEN}
+              errorColor={STENCIL_COLORS.ERROR_RED}
               washOpacity={0.16}
               showTimer
               onRetry={onGenerate}
