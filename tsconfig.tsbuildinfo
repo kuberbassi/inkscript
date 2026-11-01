@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/main.tsx","./src/components/controlpanel.tsx","./src/components/drawmodal.tsx","./src/components/outputgallery.tsx","./src/components/toolbar.tsx","./src/engine/canvasrenderer.ts","./src/engine/humanizer.ts","./src/engine/markdownparser.ts","./src/engine/pdfexporter.ts","./src/engine/prng.ts","./src/types/studio.ts"],"version":"5.7.3"}
