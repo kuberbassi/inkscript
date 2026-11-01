@@ -451,12 +451,12 @@ export const App: React.FC = () => {
           <header className="app-header">
             <div className="header-brand">
               <div className="brand-badge">
-                <i className="ph-fill ph-notebook"></i>
-                <span>Studio v3.0</span>
+                <i className="ph-fill ph-pen-nib"></i>
+                <span>InkScript Studio</span>
               </div>
-              <h1>Handwriting Studio</h1>
+              <h1>InkScript</h1>
               <p className="subtitle">
-                Humanized Notebook &amp; Sheet Generator · Direct Canvas 2D Vector Engine
+                Transform digital notes &amp; Markdown into realistic, print-ready A4 handwritten notebook sheets
               </p>
             </div>
 

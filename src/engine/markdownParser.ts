@@ -90,7 +90,7 @@ export function sanitizeRichHTMLToHandwriting(rawHTML: string): string {
               `<div style="text-align: center;"><b><u>${content}</u></b></div>`
             );
           } else {
-            outLines.push(`<b><u>${content}</u></b>`);
+            outLines.push(`<div style="margin:0; padding:0;"><b><u>${content}</u></b></div>`);
           }
         }
       } else if (tag === 'ul') {
@@ -174,7 +174,7 @@ export function parsePlainMarkdownToHandwriting(rawText: string): string {
 
     if (/^#{3,6}\s+(.+)$/.test(l)) {
       const headingText = applyInlineMarkdown(l.replace(/^#{3,6}\s+/, ''));
-      return `<b><u>${headingText}</u></b>`;
+      return `<div style="margin:0; padding:0;"><b><u>${headingText}</u></b></div>`;
     }
 
     if (/^\s*[-*•]\s+(.+)$/.test(l)) {
@@ -272,21 +272,50 @@ export function extractLogicalUnits(paperContentEl: HTMLElement): string[] {
   const units: string[] = [];
   let inlineBuffer = '';
 
-  function flushInline(): void {
+  interface InlineFormatState {
+    bold?: boolean;
+    italic?: boolean;
+    underline?: boolean;
+    strike?: boolean;
+  }
+
+  function wrapWithFormats(text: string, fmt: InlineFormatState): string {
+    if (!text) return '';
+    let out = text;
+    if (fmt.strike) out = `<s>${out}</s>`;
+    if (fmt.underline) out = `<u>${out}</u>`;
+    if (fmt.italic) out = `<i>${out}</i>`;
+    if (fmt.bold) out = `<b>${out}</b>`;
+    return out;
+  }
+
+  function flushInline(align = '', padLeft = '', textIndent = ''): void {
     if (inlineBuffer.trim() !== '') {
-      units.push(inlineBuffer);
+      let styleStr = 'margin:0; padding:0;';
+      if (padLeft) styleStr = `margin:0; padding:0 0 0 ${padLeft};`;
+      if (textIndent) styleStr += ` text-indent:${textIndent};`;
+      if (align) styleStr += ` text-align:${align};`;
+      units.push(`<div style="${styleStr}">${inlineBuffer}</div>`);
     }
     inlineBuffer = '';
   }
 
-  function walkNodes(parentEl: Node, inheritedAlign = ''): void {
+  function walkNodes(
+    parentEl: Node,
+    inheritedAlign = '',
+    inheritedFmt: InlineFormatState = {},
+    inheritedPadLeft = '',
+    inheritedTextIndent = ''
+  ): void {
     Array.from(parentEl.childNodes).forEach((node) => {
       if (node.nodeType === Node.TEXT_NODE) {
         const escaped = (node.nodeValue || '')
           .replace(/&/g, '&amp;')
           .replace(/</g, '&lt;')
           .replace(/>/g, '&gt;');
-        inlineBuffer += escaped;
+        if (escaped) {
+          inlineBuffer += wrapWithFormats(escaped, inheritedFmt);
+        }
         return;
       }
       if (node.nodeType !== Node.ELEMENT_NODE) return;
@@ -294,35 +323,77 @@ export function extractLogicalUnits(paperContentEl: HTMLElement): string[] {
       const el = node as HTMLElement;
       const tag = el.tagName.toLowerCase();
 
+      if (tag === 'img') {
+        inlineBuffer += el.outerHTML;
+        return;
+      }
+
       if (tag === 'br') {
         if (inlineBuffer.trim() !== '') {
-          flushInline();
+          flushInline(inheritedAlign, inheritedPadLeft, inheritedTextIndent);
         } else {
           units.push('');
         }
         return;
       }
 
+      // Compute updated inline formatting state from this element
+      const styleDec =
+        (el.style &&
+          (el.style.textDecoration || el.style.textDecorationLine)) ||
+        '';
+      const styleWeight = (el.style && el.style.fontWeight) || '';
+      const styleItalic = (el.style && el.style.fontStyle) || '';
+
+      const nextFmt: InlineFormatState = {
+        bold:
+          inheritedFmt.bold ||
+          tag === 'b' ||
+          tag === 'strong' ||
+          tag === 'h1' ||
+          tag === 'h2' ||
+          tag === 'h3' ||
+          tag === 'h4' ||
+          styleWeight === 'bold' ||
+          Number(styleWeight) >= 600,
+        italic:
+          inheritedFmt.italic ||
+          tag === 'i' ||
+          tag === 'em' ||
+          styleItalic === 'italic',
+        underline:
+          inheritedFmt.underline ||
+          tag === 'u' ||
+          tag === 'ins' ||
+          styleDec.includes('underline'),
+        strike:
+          inheritedFmt.strike ||
+          tag === 's' ||
+          tag === 'strike' ||
+          tag === 'del' ||
+          styleDec.includes('line-through')
+      };
+
       if (tag === 'ul') {
-        flushInline();
+        flushInline(inheritedAlign, inheritedPadLeft, inheritedTextIndent);
         Array.from(el.children).forEach((li) => {
           if (li.tagName && li.tagName.toLowerCase() === 'li') {
-            units.push(
-              `<div style="margin:0; padding:0 0 0 18px; text-indent:-12px;">&bull; ${li.innerHTML}</div>`
-            );
+            inlineBuffer = '&bull; ';
+            walkNodes(li, '', nextFmt, '18px', '-12px');
+            flushInline('', '18px', '-12px');
           }
         });
         return;
       }
 
       if (tag === 'ol') {
-        flushInline();
+        flushInline(inheritedAlign, inheritedPadLeft, inheritedTextIndent);
         let idx = 1;
         Array.from(el.children).forEach((li) => {
           if (li.tagName && li.tagName.toLowerCase() === 'li') {
-            units.push(
-              `<div style="margin:0; padding:0 0 0 18px; text-indent:-14px;">${idx}. ${li.innerHTML}</div>`
-            );
+            inlineBuffer = `${idx}. `;
+            walkNodes(li, '', nextFmt, '18px', '-14px');
+            flushInline('', '18px', '-14px');
             idx++;
           }
         });
@@ -338,46 +409,33 @@ export function extractLogicalUnits(paperContentEl: HTMLElement): string[] {
         tag === 'h4' ||
         tag === 'blockquote'
       ) {
-        flushInline();
+        flushInline(inheritedAlign, inheritedPadLeft, inheritedTextIndent);
         const align =
           (el.style && el.style.textAlign) ||
           el.getAttribute('align') ||
           inheritedAlign;
-        const padLeft = el.style ? el.style.paddingLeft : '';
-        const textIndent = el.style ? el.style.textIndent : '';
+        const padLeft = (el.style && el.style.paddingLeft) || inheritedPadLeft;
+        const textIndent =
+          (el.style && el.style.textIndent) || inheritedTextIndent;
 
         if ((el.textContent || '').trim() === '' && !el.querySelector('img')) {
           units.push('');
           return;
         }
 
-        const hasNestedBlocks = Array.from(el.children).some((c) =>
-          ['div', 'p', 'ul', 'ol', 'br'].includes(c.tagName.toLowerCase())
-        );
-
-        let styleStr = 'margin:0; padding:0;';
-        if (padLeft) styleStr = `margin:0; padding:0 0 0 ${padLeft};`;
-        if (textIndent) styleStr += ` text-indent:${textIndent};`;
-        if (align) styleStr += ` text-align:${align};`;
-
-        if (!hasNestedBlocks) {
-          units.push(`<div style="${styleStr}">${el.innerHTML}</div>`);
-        } else {
-          const prevLen = units.length;
-          walkNodes(el, align);
-          flushInline();
-          if (align) {
-            for (let k = prevLen; k < units.length; k++) {
-              if (units[k].trim() !== '' && !/^<div\b/i.test(units[k])) {
-                units[k] = `<div style="margin:0; padding:0; text-align:${align};">${units[k]}</div>`;
-              }
-            }
-          }
-        }
+        walkNodes(el, align, nextFmt, padLeft, textIndent);
+        flushInline(align, padLeft, textIndent);
         return;
       }
 
-      inlineBuffer += el.outerHTML;
+      // Inline wrapper element (b, u, i, s, span, font, etc.) — recurse so nested divs/brs are flattened cleanly
+      walkNodes(
+        el,
+        inheritedAlign,
+        nextFmt,
+        inheritedPadLeft,
+        inheritedTextIndent
+      );
     });
   }
 

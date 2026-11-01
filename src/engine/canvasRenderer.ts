@@ -216,10 +216,20 @@ export async function renderCurrentSheetToCanvas(
   }
 
   // 5. Render All Handwritten Text Nodes with Exact DOM Coordinates & 2D Affine Transforms
+  //    While simultaneously collecting exact glyph-tight underline & strikethrough segments!
   const fontFamily = settings.customFontName
     ? `'${settings.customFontName}', cursive`
     : settings.handwritingFont;
   const fontSizePx = (settings.fontSizePt * 4) / 3;
+
+  interface DecorationSegment {
+    startX: number;
+    endX: number;
+    baseY: number;
+  }
+
+  const underlineRaw: DecorationSegment[] = [];
+  const strikeRaw: DecorationSegment[] = [];
 
   const walker = document.createTreeWalker(
     paperContentEl,
@@ -239,6 +249,39 @@ export async function renderCurrentSheetToCanvas(
 
       const isBold = hasAncestorTag(textNode, paperContentEl, ['b', 'strong']);
       const isItalic = hasAncestorTag(textNode, paperContentEl, ['i', 'em']);
+      const isUnderlined = hasAncestorTag(textNode, paperContentEl, [
+        'u',
+        'ins'
+      ]);
+      const isStrikethrough = hasAncestorTag(textNode, paperContentEl, [
+        's',
+        'strike',
+        'del'
+      ]);
+
+      // Record tight text-node glyph rects for underline/strikethrough (never block div rects!)
+      if (isUnderlined || isStrikethrough) {
+        for (const r of clientRects) {
+          if (r.width < 1.5) continue;
+          const sx = r.left - pageRect.left;
+          const ex = sx + r.width;
+          if (isUnderlined) {
+            underlineRaw.push({
+              startX: sx,
+              endX: ex,
+              baseY: r.top - pageRect.top + r.height - 2.1
+            });
+          }
+          if (isStrikethrough) {
+            strikeRaw.push({
+              startX: sx,
+              endX: ex,
+              baseY: r.top - pageRect.top + r.height - fontSizePx * 0.44
+            });
+          }
+        }
+      }
+
       const opacity = parentEl.style.opacity
         ? parseFloat(parentEl.style.opacity)
         : 0.94;
@@ -342,57 +385,66 @@ export async function renderCurrentSheetToCanvas(
     textNode = walker.nextNode() as Text | null;
   }
 
-  // 6. Render Nearly-Perfect, Subtly Interrupted Hand-Drawn Underlines (<u>) & Strikethroughs (<s>)
-  const rng = new SeededRandom(pageSeed + 7919);
-  const uElements = Array.from(paperContentEl.querySelectorAll('u, ins'));
-  for (const uEl of uElements) {
-    const rects = Array.from(uEl.getClientRects());
-    for (const rect of rects) {
-      if (rect.width < 2) continue;
-      const startX = rect.left - pageRect.left;
-      const baseY = rect.top - pageRect.top + rect.height - 2.1;
-
-      if (baseY > 0 && baseY < PAGE_HEIGHT) {
-        ctx.save();
-        ctx.fillStyle = settings.inkColor;
-        ctx.globalAlpha = 0.92;
-
-        // Draw in 3px micro-strokes along the unified baseY with tiny +-0.30px wave & subtle ~5.5% ballpoint interruptions
-        for (let dx = 0; dx < rect.width; dx += 3) {
-          if (rng.chance(0.055)) continue;
-          const segW = Math.min(3.2, rect.width - dx);
-          const waveDy = Math.sin((startX + dx) * 0.045) * 0.3;
-          const thickness = rng.chance(0.28) ? 1.22 : 0.95;
-          ctx.fillRect(startX + dx, baseY + waveDy, segW, thickness);
-        }
-        ctx.restore();
+  // Helper to merge consecutive inline segments on the same visual line across word spaces
+  const mergeDecorationSegments = (
+    segs: DecorationSegment[]
+  ): DecorationSegment[] => {
+    if (segs.length === 0) return [];
+    const sorted = [...segs].sort((a, b) =>
+      Math.abs(a.baseY - b.baseY) < 6 ? a.startX - b.startX : a.baseY - b.baseY
+    );
+    const merged: DecorationSegment[] = [{ ...sorted[0] }];
+    for (let i = 1; i < sorted.length; i++) {
+      const cur = sorted[i];
+      const prev = merged[merged.length - 1];
+      if (
+        Math.abs(cur.baseY - prev.baseY) < 6 &&
+        cur.startX - prev.endX <= 24
+      ) {
+        prev.endX = Math.max(prev.endX, cur.endX);
+        prev.baseY = (prev.baseY + cur.baseY) * 0.5;
+      } else {
+        merged.push({ ...cur });
       }
     }
+    return merged;
+  };
+
+  // 6. Render Glyph-Tight, Continuous Level Hand-Drawn Underlines (<u>) & Strikethroughs (<s>)
+  const rng = new SeededRandom(pageSeed + 7919);
+  const mergedUnderlines = mergeDecorationSegments(underlineRaw);
+  for (const seg of mergedUnderlines) {
+    const width = seg.endX - seg.startX;
+    if (width < 2 || seg.baseY <= 0 || seg.baseY >= PAGE_HEIGHT) continue;
+
+    ctx.save();
+    ctx.fillStyle = settings.inkColor;
+    ctx.globalAlpha = 0.92;
+
+    for (let dx = 0; dx < width; dx += 3) {
+      if (rng.chance(0.055)) continue;
+      const segW = Math.min(3.2, width - dx);
+      const waveDy = Math.sin((seg.startX + dx) * 0.045) * 0.3;
+      const thickness = rng.chance(0.28) ? 1.22 : 0.95;
+      ctx.fillRect(seg.startX + dx, seg.baseY + waveDy, segW, thickness);
+    }
+    ctx.restore();
   }
 
-  const sElements = Array.from(
-    paperContentEl.querySelectorAll('s, strike, del')
-  );
-  for (const sEl of sElements) {
-    const rects = Array.from(sEl.getClientRects());
-    for (const rect of rects) {
-      if (rect.width < 2) continue;
-      const startX = rect.left - pageRect.left;
-      const midY =
-        rect.top - pageRect.top + rect.height - fontSizePx * 0.44;
+  const mergedStrikes = mergeDecorationSegments(strikeRaw);
+  for (const seg of mergedStrikes) {
+    const width = seg.endX - seg.startX;
+    if (width < 2 || seg.baseY <= 0 || seg.baseY >= PAGE_HEIGHT) continue;
 
-      if (midY > 0 && midY < PAGE_HEIGHT) {
-        ctx.save();
-        ctx.fillStyle = settings.inkColor;
-        ctx.globalAlpha = 0.9;
-        for (let dx = 0; dx < rect.width; dx += 3.5) {
-          const segW = Math.min(3.6, rect.width - dx);
-          const waveDy = Math.sin((startX + dx) * 0.05) * 0.25;
-          ctx.fillRect(startX + dx, midY + waveDy, segW, 1.05);
-        }
-        ctx.restore();
-      }
+    ctx.save();
+    ctx.fillStyle = settings.inkColor;
+    ctx.globalAlpha = 0.9;
+    for (let dx = 0; dx < width; dx += 3.5) {
+      const segW = Math.min(3.6, width - dx);
+      const waveDy = Math.sin((seg.startX + dx) * 0.05) * 0.25;
+      ctx.fillRect(seg.startX + dx, seg.baseY + waveDy, segW, 1.05);
     }
+    ctx.restore();
   }
 
   // 7. Apply Optional Page Surface Effect (Soft Shadow or Scanner Contrast)

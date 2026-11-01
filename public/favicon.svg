@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <rect width="64" height="64" rx="16" fill="#09090b"/>
+  <rect x="2" y="2" width="60" height="60" rx="14" stroke="#27272a" stroke-width="2"/>
+  <!-- Notebook Sheet -->
+  <rect x="14" y="12" width="32" height="40" rx="4" fill="#fafafa"/>
+  <!-- Pink Margin Line -->
+  <line x1="21" y1="12" x2="21" y2="52" stroke="#f472b6" stroke-width="1.6"/>
+  <line x1="14" y1="20" x2="46" y2="20" stroke="#f472b6" stroke-width="1.6"/>
+  <!-- Ruled Lines -->
+  <line x1="23" y1="27" x2="41" y2="27" stroke="#1a2f7d" stroke-width="2" stroke-linecap="round"/>
+  <line x1="23" y1="34" x2="39" y2="34" stroke="#1a2f7d" stroke-width="2" stroke-linecap="round"/>
+  <line x1="23" y1="41" x2="35" y2="41" stroke="#1a2f7d" stroke-width="2" stroke-linecap="round"/>
+  <!-- Pen Nib Badge -->
+  <circle cx="45" cy="43" r="10" fill="#18181b" stroke="#3f3f46" stroke-width="1.5"/>
+  <path d="M41.5 46.5L43 41L48.5 37.5L46.5 43L41.5 46.5Z" fill="#6366f1" stroke="#e0e7ff" stroke-width="1.2" stroke-linejoin="round"/>
+</svg>

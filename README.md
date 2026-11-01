@@ -1,51 +1,57 @@
-# Handwriting Studio v3.0
+# InkScript Studio
 
-High-resolution humanized notebook and assignment sheet generator built with **React 19**, **TypeScript 5**, **Vite 6**, and a **Direct HTML5 Canvas 2D Vector Rendering Engine**.
-
----
-
-## Architecture Highlights (v3.0 Hybrid Engine)
-
-1. **Direct HTML5 Canvas 2D Vector Renderer ([`src/engine/canvasRenderer.ts`](./src/engine/canvasRenderer.ts))**
-   - Eliminates `html2canvas` DOM cloning overhead — renders pages in **< 35ms** at up to **6× print resolution (300+ DPI)**.
-   - **Vector Ruled & Margin Lines**: Draws crisp horizontal ruled lines (`#94a3b8`) and dual vertical pink margin lines (`#f43f5e`) directly via Canvas 2D vector paths.
-   - **2D Affine Syllable Transforms**: Queries live glyph bounding boxes via `Range.getClientRects()` and applies per-syllable `translate` + `rotate` + `skewX` + `scale(scaleX, scaleY)` anchored at the baseline (`50% 82%`).
-   - **Multi-Pass Pen Pressure & Ink Pooling**: Simulates real ballpoint/gel pen pressure (`#0f296b`, `#141824`, `#991b1b`) with heavier multi-pass downstrokes at word starts and capitals, lighter skimming strokes on fast transitions, and ink pooling on terminal punctuation.
-   - **Subtly Interrupted Level Underlines**: Draws continuous, level hand-drawn underlines across words and spaces using `3px` micro-strokes with `±0.30px` organic hand tremor and `5.5%` ballpoint micro-skips.
-
-2. **Deterministic Human Handwriting Engine ([`src/engine/humanizer.ts`](./src/engine/humanizer.ts) & [`src/engine/prng.ts`](./src/engine/prng.ts))**
-   - Seeded `Mulberry32` + `Gaussian` PRNG ensures every preview matches exported sheets.
-   - Splits words into smooth `3–4` character syllable strokes while separating consecutive twin letters (`ll`, `ss`, `ff`, `ee`) so identical letters never look copy-pasted.
-   - Zero cumulative vertical line-height drift across 30+ lines.
-
-3. **Humanize-Before-Paginate Multi-Page Pipeline ([`src/engine/canvasRenderer.ts`](./src/engine/canvasRenderer.ts))**
-   - Applies handwriting realism **before** measuring `scrollHeight`, guaranteeing `0.0px` layout shift and preventing clipped sentences at page breaks.
-   - Built-in widow/orphan protection keeps headings paired with their body paragraphs.
-
-4. **Rich Markdown & Clipboard Engine ([`src/engine/markdownParser.ts`](./src/engine/markdownParser.ts))**
-   - 8×2 Sharp AMOLED Monochrome formatting toolbar (`Bold`, `Italic`, `Underline`, `Strikethrough`, `Align Left/Center/Right/Justify`, `Bullets`, `Numbered Lists`, `Headings`, `Symbols`).
-   - Automatic rich HTML paste (`Ctrl+V` from ChatGPT, Notion, Google Docs, Word) and Markdown parser (`# Heading`, `**bold**`, `*italic*`, `__underline__`, `- bullets`).
-   - Markdown-preserving copy (`Ctrl+C` exports formatted sheet content back as clean Markdown + HTML).
-
-5. **Full-Bleed A4 PDF Exporter ([`src/engine/pdfExporter.ts`](./src/engine/pdfExporter.ts))**
-   - Edge-to-edge full-bleed A4 PDF generation (`0, 0, width, height`) with zero added white borders.
+Transform digital notes, rich text, and Markdown into realistic, print-ready A4 handwritten notebook sheets. Built with **React 19**, **TypeScript 5**, **Vite 6**, **Tailwind CSS v4**, **React Bits** interactive primitives, and a **Direct HTML5 Canvas 2D Vector Rendering Engine**.
 
 ---
 
-## Quick Start
+## Key Features
 
-### Development Mode (Vite HMR)
+### 1. Direct HTML5 Canvas 2D Vector Engine (`src/engine/canvasRenderer.ts`)
+- **Zero-Lag High-DPI Rendering**: Renders pages directly onto an HTML5 `<canvas>` at up to **6× print resolution (500 DPI)** in milliseconds.
+- **Independent Sheet Stencils**: Separate controls for **Top Margin** (`50px` header + horizontal pink rule), **Left Margin** (full-height vertical pink rule starting from `y = 0`), **Ruled Lines**, and **Lines Gap (`px`)** completely decoupled from font size.
+- **Smart Baseline Compensation**: Automatically aligns cursive and print handwriting baselines onto ruled notebook lines at any font size (`6pt–26pt`) or line gap (`14px–42px`).
+- **2D Affine Syllable Transforms**: Applies per-syllable slant (`skewX`), micro-rotation (`rotate`), rounded bowl scaling (`scale`), and multi-pass ballpoint ink pressure shadows anchored at `50% 82%`.
+- **Glyph-Tight Hand-Drawn Underlines**: Measures exact text-node glyph bounds and merges inline segments across word spaces to draw continuous, level hand-drawn underlines with subtle ballpoint micro-skips.
+
+### 2. Deterministic Human Handwriting Engine (`src/engine/humanizer.ts` & `src/engine/prng.ts`)
+- Seeded **Mulberry32 + Gaussian PRNG** with one-click **Re-Roll** variation seed (`#seed`).
+- Splits words into smooth `3–4` letter syllable chunks and breaks consecutive twin letters (`ll`, `ss`, `ff`, `ee`, `oo`) so adjacent identical letters never look identical.
+- **Humanize-Before-Paginate Pipeline**: Applies handwriting realism before measuring page height so multi-page pagination has `0.0px` vertical drift and built-in widow/orphan protection for headings.
+
+### 3. Notion-Inspired Studio UI & React Bits Primitives
+- **`GlideSelect`**: Spring-animated dropdown chips for Font, Ink, Realism, Surface, Scale, Format, and Template selection.
+- **`ScrubField`**: Drag-to-scrub or click-to-type numeric inputs for Font Size, Word Gap, Letter Gap, Top Pad, Left Offset, and Lines Gap.
+- **`CallChip`**: Live status indicator with millisecond timer and progress wash during vector sheet rendering.
+- **`HoldButton`**: Press-and-hold safety action to clear rendered sheets.
+- **`WarmTooltip`**: Shared warm-window tooltips with keyboard shortcut badges across the studio and single-line formatting toolbar.
+- **`Aurora` & `ClickSpark`**: Smooth ink-synced top banner aurora and subtle pointer click sparks in both Dark and Light themes.
+- **Viewport-Fitted Pop-Up Editor**: Expand the live sheet canvas into a distraction-free modal that automatically scales to fit your window height without scrollbars.
+- **Diagram Upload & Freehand Sketch Pad**: Upload existing diagram images (drag-and-drop or `Ctrl+V` paste) with automatic ink-color tinting, or sketch freehand diagrams.
+
+### 4. Rich Markdown Paste, Copy & Full-Bleed A4 PDF Export
+- Paste directly from ChatGPT, Notion, Google Docs, or Markdown (`# Heading`, `**bold**`, `*italic*`, `__underline__`, `- bullets`) and automatically convert into ruled-line-friendly handwriting.
+- Export individual high-resolution PNG sheets or a multi-page **full-bleed A4 PDF** (`src/engine/pdfExporter.ts`).
+
+---
+
+## Getting Started
+
+### Install Dependencies
+```bash
+npm install
+```
+
+### Start Development Server
 ```bash
 npm run dev
 ```
-Opens `http://localhost:3000` with instant TypeScript + React Hot Module Replacement.
+Opens `http://localhost:3000` with instant Vite HMR.
 
-### Production Build & Local Server
+### Build for Production
 ```bash
 npm run build
-npm start
+npm run preview
 ```
-Or double-click [`start.bat`](./start.bat) on Windows.
 
 ---
 
@@ -53,31 +59,30 @@ Or double-click [`start.bat`](./start.bat) on Windows.
 
 ```text
 ├── public/
-│   ├── fonts/                 # Local handwriting font assets (Cedarville Cursive, Homemade Apple, etc.)
-│   ├── images/                # UI icons & favicons
+│   ├── fonts/                 # Bundled custom handwriting fonts
+│   ├── favicon.svg            # Vector studio favicon
 │   └── manifest.webmanifest   # Web app manifest
 ├── src/
 │   ├── components/
-│   │   ├── ControlPanel.tsx   # Typography, alignment, paper lines & template controls
-│   │   ├── DrawModal.tsx      # Interactive diagram & freehand sketch canvas modal
-│   │   ├── OutputGallery.tsx  # Generated sheet gallery, reordering & PNG/PDF actions
-│   │   └── Toolbar.tsx        # 8×2 Sharp AMOLED formatting toolbar & custom font loader
+│   │   ├── reactbits/         # Aurora, CallChip, ClickSpark, GlideSelect, HoldButton, ScrubField, WarmTooltip
+│   │   ├── ControlPanel.tsx   # Pen, Realism, Typography & Sheet Stencil customizer cards
+│   │   ├── DrawModal.tsx      # Diagram image uploader (with ink tinting) & freehand sketch pad
+│   │   ├── OutputGallery.tsx  # Rendered A4 sheet gallery, lightbox zoom & PDF/PNG export
+│   │   └── Toolbar.tsx        # Single-line formatting & symbol toolbar
 │   ├── engine/
-│   │   ├── canvasRenderer.ts  # Direct HTML5 Canvas 2D vector handwriting & pagination engine
-│   │   ├── humanizer.ts       # Syllable splitter, twin-glyph breaker & baseline humanizer
-│   │   ├── markdownParser.ts  # HTML-to-Markdown & Markdown-to-HTML clipboard converter
-│   │   ├── pdfExporter.ts     # Full-bleed A4 PDF generator
-│   │   └── prng.ts            # Deterministic Mulberry32 & Gaussian PRNG
+│   │   ├── canvasRenderer.ts  # Direct HTML5 Canvas 2D vector renderer & multi-page paginator
+│   │   ├── humanizer.ts       # Syllable splitter, twin-letter breaker & organic baseline engine
+│   │   ├── markdownParser.ts  # Rich HTML & Markdown paste/copy sanitizer & logical block extractor
+│   │   ├── pdfExporter.ts     # Full-bleed A4 PDF exporter
+│   │   └── prng.ts            # Seeded Mulberry32 & Gaussian random number generator
 │   ├── styles/
-│   │   └── studio.css         # Sharp AMOLED Monochrome UI & ruled sheet styles
+│   │   └── studio.css         # Studio theme, sheet stencil grid & responsive layout
 │   ├── types/
-│   │   └── studio.ts          # Strict TypeScript interfaces & presets
-│   ├── App.tsx                # Studio state management & live preview sync
+│   │   └── studio.ts          # TypeScript interfaces, font presets & default settings
+│   ├── App.tsx                # Root studio state, live sheet preview & Pop-Up View controller
 │   └── main.tsx               # React 19 entry point
-├── index.html                 # Vite entry HTML
+├── index.html                 # App entry HTML & webfont imports
 ├── package.json               # Scripts & dependencies
-├── server.js                  # Zero-dependency production static server (port 3000)
-├── start.bat                  # One-click Windows launcher
 ├── tsconfig.json              # Strict TypeScript 5 configuration
-└── vite.config.ts             # Vite bundler configuration
+└── vite.config.ts             # Vite 6 + Tailwind v4 configuration
 ```

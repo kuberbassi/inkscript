@@ -1,4 +1,4 @@
 node_modules/
 dist/
-.npmrc
-*.log
+*.tsbuildinfo
+.DS_Store

@@ -1,21 +1,17 @@
 {
-  "name": "Handwriting Studio",
-  "short_name": "Handwriting Studio",
+  "name": "InkScript — Humanized Handwriting & Sheet Studio",
+  "short_name": "InkScript",
   "icons": [
     {
-      "src": "images/android-chrome-192x192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "images/android-chrome-512x512.png",
-      "sizes": "512x512",
-      "type": "image/png"
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
     }
   ],
-  "theme_color": "#000000",
-  "background_color": "#000000",
+  "theme_color": "#09090b",
+  "background_color": "#09090b",
   "display": "standalone",
-  "start_url": ".",
-  "description": "High-Resolution Humanized Notebook & Sheet Generator"
+  "start_url": "/",
+  "description": "Transform digital notes and Markdown into realistic, print-ready A4 handwritten notebook pages with a Direct Canvas 2D Vector Engine."
 }
