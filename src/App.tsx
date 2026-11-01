@@ -30,7 +30,12 @@ export const App: React.FC = () => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_SETTINGS);
       if (saved) {
-        return { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
+        const parsed = JSON.parse(saved);
+        return {
+          ...DEFAULT_SETTINGS,
+          ...parsed,
+          lineGapPx: parsed.lineGapPx ?? DEFAULT_SETTINGS.lineGapPx
+        };
       }
     } catch {
       // Ignore storage error
@@ -42,6 +47,7 @@ export const App: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [chipStatus, setChipStatus] = useState<CallChipStatus>('idle');
   const [isDrawOpen, setIsDrawOpen] = useState(false);
+  const [isExpandedEditor, setIsExpandedEditor] = useState(false);
 
   const pageElRef = useRef<HTMLDivElement | null>(null);
   const paperContentRef = useRef<HTMLDivElement | null>(null);
@@ -55,6 +61,18 @@ export const App: React.FC = () => {
     }
   }, []);
 
+  // Close expanded editor on Escape key
+  useEffect(() => {
+    if (!isExpandedEditor) return undefined;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsExpandedEditor(false);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isExpandedEditor]);
+
   // Save settings to localStorage and sync body theme class
   useEffect(() => {
     try {
@@ -65,16 +83,25 @@ export const App: React.FC = () => {
     document.body.classList.toggle('dark', settings.darkMode);
   }, [settings]);
 
-  // Compute exact integer pixel line-height so CSS text lines and ruled lines never drift
+  // Page Lines Gap is FIXED unless changed in Sheet Stencil & Page Lines!
+  // Font Size changes only glyph size, while text lines stay locked to lineGapPx.
   const exactLineHeightPx = useMemo(() => {
+    return Math.max(14, Math.round(settings.lineGapPx || 21));
+  }, [settings.lineGapPx]);
+
+  // Smart baseline compensation: when Font Size changes relative to the fixed lineGapPx,
+  // compute a subtle vertical baseline shift so glyphs always rest right on the ruled line.
+  const smartBaselineOffsetPx = useMemo(() => {
     const fontSizePx = (settings.fontSizePt * 4) / 3;
-    return Math.max(12, Math.round(fontSizePx * settings.lineHeightEm));
-  }, [settings.fontSizePt, settings.lineHeightEm]);
+    const naturalGap = fontSizePx * 1.43;
+    const diff = exactLineHeightPx - naturalGap;
+    return Math.max(0, Math.round(settings.topPaddingPx + diff * 0.18));
+  }, [settings.fontSizePt, exactLineHeightPx, settings.topPaddingPx]);
 
   // Sync CSS custom variables for the Live Sheet Preview
   useEffect(() => {
-    const lineStopPx = Math.max(1, +(exactLineHeightPx - 1.4).toFixed(2));
-    const bgOffset = Math.max(0, Math.round(settings.topPaddingPx) - 2);
+    const lineStopPx = Math.max(1, +(exactLineHeightPx - 1.2).toFixed(2));
+    const bgOffset = Math.max(0, Math.round(settings.topPaddingPx));
     const leftMarginPos = Math.max(0, Math.round(settings.leftPaddingPx) - 6);
 
     const fontToUse = settings.customFontName
@@ -104,8 +131,8 @@ export const App: React.FC = () => {
         customPaperBgUrl: null,
         showRuledLines: false,
         showMarginLine: false,
-        lineHeightEm: 1.5,
-        topPaddingPx: 28,
+        lineGapPx: 22,
+        topPaddingPx: 24,
         leftPaddingPx: 32
       }));
     } else {
@@ -115,8 +142,8 @@ export const App: React.FC = () => {
         customPaperBgUrl: null,
         showRuledLines: true,
         showMarginLine: true,
-        lineHeightEm: 1.45,
-        topPaddingPx: 5,
+        lineGapPx: 21,
+        topPaddingPx: 0,
         leftPaddingPx: 55
       }));
     }
@@ -262,6 +289,12 @@ export const App: React.FC = () => {
 
   const handleGenerate = useCallback(async () => {
     if (!pageElRef.current || !paperContentRef.current) return;
+    const wasExpanded = isExpandedEditor;
+    if (wasExpanded) {
+      setIsExpandedEditor(false);
+      await new Promise((r) => setTimeout(r, 60));
+    }
+
     setIsGenerating(true);
     setChipStatus('running');
 
@@ -283,7 +316,7 @@ export const App: React.FC = () => {
     } finally {
       setIsGenerating(false);
     }
-  }, [settings, exactLineHeightPx]);
+  }, [settings, exactLineHeightPx, isExpandedEditor]);
 
   const handleRemovePage = useCallback((index: number) => {
     setPages((prev) => prev.filter((_, i) => i !== index));
@@ -321,13 +354,13 @@ export const App: React.FC = () => {
   // Dynamic Aurora color stops synced with active Ink Color & Studio theme
   const auroraStops = useMemo(() => {
     const ink = settings.inkColor || '#1a2f7d';
-    if (ink === '#141824') {
+    if (ink === '#1a1a1a') {
       return ['#3f3f46', '#71717a', '#52525b'];
     }
-    if (ink === '#991b1b') {
+    if (ink === '#ba3807') {
       return ['#dc2626', '#f43f5e', '#991b1b'];
     }
-    return [ink, '#6366f1', '#38bdf8'];
+    return [ink, '#4f46e5', '#38bdf8'];
   }, [settings.inkColor]);
 
   const pageClassNames = [
@@ -356,10 +389,10 @@ export const App: React.FC = () => {
           amplitude={0.85}
           blend={0.55}
           speed={0.75}
-          height={0.55}
+          height={0.5}
           glow={0.65}
-          brightness={settings.darkMode ? 0.85 : 0.65}
-          opacity={settings.darkMode ? 0.52 : 0.35}
+          brightness={settings.darkMode ? 0.65 : 0.45}
+          opacity={settings.darkMode ? 0.36 : 0.25}
           lightMode={!settings.darkMode}
           direction="top"
           mouseInteraction
@@ -404,27 +437,69 @@ export const App: React.FC = () => {
 
           <section className="generate-image-section">
             <div className="display-flex output-grid responsive-flex">
-              <div className="flex-1 page-container-super">
+              {/* Backdrop when Sheet Canvas is in Expanded Pop-Up View */}
+              {isExpandedEditor && (
+                <div
+                  className="sheet-modal-backdrop"
+                  onClick={() => setIsExpandedEditor(false)}
+                />
+              )}
+
+              <div
+                className={`flex-1 page-container-super ${
+                  isExpandedEditor ? 'expanded-modal-mode' : ''
+                }`}
+              >
                 <div className="section-header-row">
                   <div className="flex items-center gap-2">
-                    <h2 style={{ margin: 0 }}>Sheet Canvas</h2>
+                    <h2 style={{ margin: 0 }}>
+                      {isExpandedEditor ? 'Expanded Sheet Editor' : 'Sheet Canvas'}
+                    </h2>
                     <span className="sheet-live-pill">Live</span>
                   </div>
-                  <WarmTooltip
-                    content="Open freehand sketch & diagram tool"
-                    shortcut="Draw"
-                    side="top"
-                  >
-                    <button
-                      type="button"
-                      id="draw-diagram-button"
-                      className="draw-button"
-                      onClick={() => setIsDrawOpen(true)}
+
+                  <div className="flex items-center gap-1.5">
+                    <WarmTooltip
+                      content="Open freehand sketch & diagram tool"
+                      shortcut="Draw"
+                      side="top"
                     >
-                      <i className="ph ph-pencil-line"></i>
-                      <span>Draw Diagram</span>
-                    </button>
-                  </WarmTooltip>
+                      <button
+                        type="button"
+                        id="draw-diagram-button"
+                        className="draw-button"
+                        onClick={() => setIsDrawOpen(true)}
+                      >
+                        <i className="ph ph-pencil-line"></i>
+                        <span>Draw</span>
+                      </button>
+                    </WarmTooltip>
+
+                    <WarmTooltip
+                      content={
+                        isExpandedEditor
+                          ? 'Exit Pop-Up View (Esc)'
+                          : 'Expand Sheet in Pop-Up View for Large Editing'
+                      }
+                      shortcut={isExpandedEditor ? 'Esc' : 'Zoom'}
+                      side="top"
+                    >
+                      <button
+                        type="button"
+                        className="draw-button expand-sheet-btn"
+                        onClick={() => setIsExpandedEditor((v) => !v)}
+                      >
+                        <i
+                          className={
+                            isExpandedEditor
+                              ? 'ph ph-arrows-in-simple'
+                              : 'ph ph-arrows-out-simple'
+                          }
+                        ></i>
+                        <span>{isExpandedEditor ? 'Minimize' : 'Pop-Up View'}</span>
+                      </button>
+                    </WarmTooltip>
+                  </div>
                 </div>
 
                 <Toolbar
@@ -434,47 +509,49 @@ export const App: React.FC = () => {
                 />
 
                 <div className="flex-1 page-container">
-                  <div
-                    ref={pageElRef}
-                    className={pageClassNames}
-                    style={{
-                      fontSize: `${settings.fontSizePt}pt`,
-                      lineHeight: `${exactLineHeightPx}px`,
-                      wordSpacing: `${settings.wordSpacingPx}px`,
-                      letterSpacing: `${settings.letterSpacingPt}pt`,
-                      backgroundImage: settings.customPaperBgUrl
-                        ? `url("${settings.customPaperBgUrl}")`
-                        : undefined
-                    }}
-                  >
+                  <div className="sheet-zoom-stage">
                     <div
-                      contentEditable
-                      suppressContentEditableWarning
-                      className="top-margin"
-                    />
-                    <div
-                      ref={containerRef}
-                      className="display-flex left-margin-and-content"
+                      ref={pageElRef}
+                      className={pageClassNames}
+                      style={{
+                        fontSize: `${settings.fontSizePt}pt`,
+                        lineHeight: `${exactLineHeightPx}px`,
+                        wordSpacing: `${settings.wordSpacingPx}px`,
+                        letterSpacing: `${settings.letterSpacingPt}pt`,
+                        backgroundImage: settings.customPaperBgUrl
+                          ? `url("${settings.customPaperBgUrl}")`
+                          : undefined
+                      }}
                     >
                       <div
                         contentEditable
                         suppressContentEditableWarning
-                        className="left-margin"
+                        className="top-margin"
                       />
                       <div
-                        ref={paperContentRef}
-                        id="note"
-                        className="paper-content"
-                        contentEditable
-                        suppressContentEditableWarning
-                        style={{
-                          paddingTop: `${settings.topPaddingPx}px`,
-                          paddingLeft: `${settings.leftPaddingPx}px`
-                        }}
-                        onInput={saveEditorContent}
-                        onPaste={handlePaste}
-                        onCopy={handleCopy}
-                      />
+                        ref={containerRef}
+                        className="display-flex left-margin-and-content"
+                      >
+                        <div
+                          contentEditable
+                          suppressContentEditableWarning
+                          className="left-margin"
+                        />
+                        <div
+                          ref={paperContentRef}
+                          id="note"
+                          className="paper-content"
+                          contentEditable
+                          suppressContentEditableWarning
+                          style={{
+                            paddingTop: `${smartBaselineOffsetPx}px`,
+                            paddingLeft: `${settings.leftPaddingPx}px`
+                          }}
+                          onInput={saveEditorContent}
+                          onPaste={handlePaste}
+                          onCopy={handleCopy}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>

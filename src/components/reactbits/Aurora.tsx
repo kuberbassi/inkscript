@@ -369,6 +369,8 @@ const Aurora = ({
       unwrapHues(s.stops.map(value => toOklch(parse(value)))).forEach((stop, index) => palette.set(stop, index * 3));
       const reveal = state.reveal;
       gl.viewport(0, 0, canvas.width, canvas.height);
+      gl.clearColor(0, 0, 0, 0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
       gl.useProgram(program.program);
       gl.bindVertexArray(vao);
       gl.uniform2f(u.uResolution, canvas.width, canvas.height);

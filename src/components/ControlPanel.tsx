@@ -71,10 +71,11 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
       HANDWRITING_FONTS.map((f) => ({
         value: f.value,
         label: (
-          <span style={{ fontFamily: f.previewFont, fontSize: '14px' }}>
-            {f.label}
+          <span style={{ fontFamily: f.previewFont, fontSize: '13.5px' }}>
+            {f.shortLabel}
           </span>
-        )
+        ),
+        tag: f.label.includes('(') ? f.label.split('(')[1].replace(')', '') : undefined
       })),
     []
   );
@@ -86,10 +87,10 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         label: (
           <span className="inline-flex items-center gap-2">
             <span
-              className="inline-block h-3 w-3 rounded-[4px] border border-white/20"
+              className="inline-block h-2.5 w-2.5 shrink-0 rounded-[3px] border border-white/25"
               style={{ backgroundColor: ink.value }}
             />
-            <span>{ink.label}</span>
+            <span>{ink.shortLabel}</span>
           </span>
         ),
         tag: ink.value
@@ -101,7 +102,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
     () =>
       REALISM_PRESETS.map((p) => ({
         value: String(p.value),
-        label: p.label,
+        label: p.shortLabel,
         tag: p.value === 0 ? '0%' : `${Math.round(p.value * 100)}%`
       })),
     []
@@ -111,17 +112,17 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
     () => [
       {
         value: 'no-effect',
-        label: 'Clean White Sheet',
+        label: 'Clean White',
         tag: 'Print'
       },
       {
         value: 'shadows',
-        label: 'Soft Vignette Shadow',
+        label: 'Soft Shadow',
         tag: 'Depth'
       },
       {
         value: 'scanner',
-        label: 'High-Contrast Scanner',
+        label: 'Scanner Effect',
         tag: 'Scan'
       }
     ],
@@ -130,11 +131,11 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
 
   const resolutionOptions: GlideSelectOption[] = useMemo(
     () => [
-      { value: '2', label: 'Standard', tag: '2×' },
-      { value: '3', label: 'High', tag: '3×' },
-      { value: '4', label: 'Very High', tag: '4×' },
-      { value: '5', label: 'Ultra High (300 DPI)', tag: '5×' },
-      { value: '6', label: 'Maximum Quality', tag: '6×' }
+      { value: '2', label: 'Standard (2×)', tag: '150 DPI' },
+      { value: '3', label: 'High (3×)', tag: '220 DPI' },
+      { value: '4', label: 'Very High (4×)', tag: '300 DPI' },
+      { value: '5', label: 'Ultra High (5×)', tag: '400 DPI' },
+      { value: '6', label: 'Max Print (6×)', tag: '500 DPI' }
     ],
     []
   );
@@ -143,13 +144,13 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
     () => [
       {
         value: 'default',
-        label: 'Standard Ruled Notebook',
+        label: 'Ruled Notebook',
         tag: 'Ruled'
       },
       {
         value: 'blank',
-        label: 'Plain Blank White Sheet',
-        tag: 'Blank'
+        label: 'Blank White',
+        tag: 'Plain'
       }
     ],
     []
@@ -159,8 +160,8 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
     () => [
       {
         value: 'a4',
-        label: 'A4 Sheet',
-        tag: '210×297mm'
+        label: 'A4 Standard',
+        tag: '210×297'
       }
     ],
     []
@@ -181,7 +182,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
               <i className="ph ph-pen-nib"></i>
               <span>Customize Pen &amp; Realism</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <WarmTooltip
                 content={`Re-roll variation seed (#${settings.realismSeed})`}
                 shortcut="Seed"
@@ -247,7 +248,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                     accentColor={accentChip}
                     size="sm"
                     radius={8}
-                    menuWidth={230}
+                    menuWidth={210}
                     align="right"
                     ariaLabel="Select Ink Color"
                   />
@@ -269,7 +270,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                     accentColor={accentChip}
                     size="sm"
                     radius={8}
-                    menuWidth={245}
+                    menuWidth={210}
                     align="right"
                     ariaLabel="Select Human Realism"
                   />
@@ -294,7 +295,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                     accentColor={accentChip}
                     size="sm"
                     radius={8}
-                    menuWidth={220}
+                    menuWidth={200}
                     align="right"
                     ariaLabel="Select Page Surface"
                   />
@@ -316,7 +317,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                     accentColor={accentChip}
                     size="sm"
                     radius={8}
-                    menuWidth={220}
+                    menuWidth={210}
                     align="right"
                     ariaLabel="Select Export Resolution"
                   />
@@ -351,7 +352,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           <div className="customizer-card-header">
             <div className="customizer-card-title">
               <i className="ph ph-sliders-horizontal"></i>
-              <span>Typography &amp; Baseline Geometry</span>
+              <span>Typography &amp; Spacing</span>
             </div>
             <span className="customizer-badge">Drag to scrub · Click to type</span>
           </div>
@@ -364,7 +365,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 value={settings.fontSizePt}
                 defaultValue={DEFAULT_SETTINGS.fontSizePt}
                 min={6}
-                max={28}
+                max={26}
                 step={0.5}
                 sensitivity={3}
                 size="md"
@@ -372,56 +373,6 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 accent={accentChip}
                 chipColor={surfaceChip}
                 onChange={(v) => onUpdate({ fontSizePt: v })}
-              />
-
-              <ScrubField
-                label="Line Height"
-                suffix="em"
-                value={settings.lineHeightEm}
-                defaultValue={DEFAULT_SETTINGS.lineHeightEm}
-                min={0.9}
-                max={3.0}
-                step={0.05}
-                sensitivity={4}
-                size="md"
-                fullWidth
-                accent={accentChip}
-                chipColor={surfaceChip}
-                onChange={(v) => onUpdate({ lineHeightEm: v })}
-              />
-
-              <ScrubField
-                label="Top Pad"
-                suffix="px"
-                value={settings.topPaddingPx}
-                defaultValue={DEFAULT_SETTINGS.topPaddingPx}
-                min={0}
-                max={120}
-                step={1}
-                sensitivity={2}
-                size="md"
-                fullWidth
-                accent={accentChip}
-                chipColor={surfaceChip}
-                onChange={(v) => onUpdate({ topPaddingPx: v })}
-              />
-            </div>
-
-            <div className="customizer-grid-3">
-              <ScrubField
-                label="Left Offset"
-                suffix="px"
-                value={settings.leftPaddingPx}
-                defaultValue={DEFAULT_SETTINGS.leftPaddingPx}
-                min={0}
-                max={140}
-                step={1}
-                sensitivity={2}
-                size="md"
-                fullWidth
-                accent={accentChip}
-                chipColor={surfaceChip}
-                onChange={(v) => onUpdate({ leftPaddingPx: v })}
               />
 
               <ScrubField
@@ -456,20 +407,82 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 onChange={(v) => onUpdate({ letterSpacingPt: v })}
               />
             </div>
+
+            <div className="customizer-grid-3">
+              <ScrubField
+                label="Top Pad"
+                suffix="px"
+                value={settings.topPaddingPx}
+                defaultValue={DEFAULT_SETTINGS.topPaddingPx}
+                min={0}
+                max={120}
+                step={1}
+                sensitivity={2}
+                size="md"
+                fullWidth
+                accent={accentChip}
+                chipColor={surfaceChip}
+                onChange={(v) => onUpdate({ topPaddingPx: v })}
+              />
+
+              <ScrubField
+                label="Left Offset"
+                suffix="px"
+                value={settings.leftPaddingPx}
+                defaultValue={DEFAULT_SETTINGS.leftPaddingPx}
+                min={0}
+                max={140}
+                step={1}
+                sensitivity={2}
+                size="md"
+                fullWidth
+                accent={accentChip}
+                chipColor={surfaceChip}
+                onChange={(v) => onUpdate({ leftPaddingPx: v })}
+              />
+
+              <div className="prop-cell">
+                <span className="prop-label">Custom Font</span>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    ref={fontFileInputRef}
+                    accept=".ttf, .otf"
+                    type="file"
+                    id="font-file"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) onUploadFont(file);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="notion-chip-btn"
+                    onClick={() => fontFileInputRef.current?.click()}
+                  >
+                    <i className="ph ph-upload-simple"></i>
+                    <span>
+                      {settings.customFontName ? 'Loaded' : 'Upload .ttf'}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Card 3: Sheet Template, Lines & Custom Assets */}
+        {/* Card 3: Sheet Stencil, Lines Gap & Custom Background */}
         <div className="customizer-card">
           <div className="customizer-card-header">
             <div className="customizer-card-title">
               <i className="ph ph-notebook"></i>
-              <span>Sheet Template &amp; Assets</span>
+              <span>Sheet Stencil &amp; Page Lines</span>
             </div>
+            <span className="customizer-badge">Independent Stencil Grid</span>
           </div>
 
           <div className="customizer-card-body">
-            <div className="customizer-grid-3">
+            <div className="customizer-grid-2">
               <div className="prop-cell">
                 <span className="prop-label">Template</span>
                 <div className="prop-control">
@@ -483,13 +496,31 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                     accentColor={accentChip}
                     size="sm"
                     radius={8}
-                    menuWidth={230}
+                    menuWidth={210}
                     align="right"
                     ariaLabel="Select Sheet Preset"
                   />
                 </div>
               </div>
 
+              <ScrubField
+                label="Page Lines Gap"
+                suffix="px"
+                value={settings.lineGapPx}
+                defaultValue={DEFAULT_SETTINGS.lineGapPx}
+                min={14}
+                max={42}
+                step={1}
+                sensitivity={3}
+                size="md"
+                fullWidth
+                accent={accentChip}
+                chipColor={surfaceChip}
+                onChange={(v) => onUpdate({ lineGapPx: v })}
+              />
+            </div>
+
+            <div className="customizer-grid-3">
               <div className="prop-cell">
                 <span className="prop-label">Margin Line</span>
                 <button
@@ -521,39 +552,10 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                   <span className="notion-switch-thumb" />
                 </button>
               </div>
-            </div>
-
-            <div className="customizer-grid-2">
-              <div className="prop-cell">
-                <span className="prop-label">Custom Font (.ttf/.otf)</span>
-                <div className="flex items-center gap-2">
-                  <input
-                    ref={fontFileInputRef}
-                    accept=".ttf, .otf"
-                    type="file"
-                    id="font-file"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) onUploadFont(file);
-                    }}
-                  />
-                  <button
-                    type="button"
-                    className="notion-chip-btn"
-                    onClick={() => fontFileInputRef.current?.click()}
-                  >
-                    <i className="ph ph-upload-simple"></i>
-                    <span>
-                      {settings.customFontName ? 'Loaded Custom' : 'Upload Font'}
-                    </span>
-                  </button>
-                </div>
-              </div>
 
               <div className="prop-cell">
-                <span className="prop-label">Custom Sheet Scan</span>
-                <div className="flex items-center gap-2">
+                <span className="prop-label">Custom Scan</span>
+                <div className="flex items-center gap-1.5">
                   <input
                     ref={paperFileInputRef}
                     accept=".jpg, .jpeg, .png"
@@ -578,7 +580,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                   >
                     <i className="ph ph-image"></i>
                     <span>
-                      {settings.customPaperBgUrl ? 'Change BG' : 'Upload Image'}
+                      {settings.customPaperBgUrl ? 'Change' : 'Upload'}
                     </span>
                   </button>
                 </div>
@@ -615,7 +617,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
               }
               status={chipStatus}
               expectedMs={420}
-              size={38}
+              size={40}
               radius={10}
               surfaceColor={settings.darkMode ? '#18181b' : '#e4e4e7'}
               color={settings.darkMode ? '#f4f4f5' : '#18181b'}

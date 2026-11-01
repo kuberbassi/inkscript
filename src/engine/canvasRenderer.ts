@@ -152,7 +152,8 @@ export async function renderCurrentSheetToCanvas(
   }
 
   const topMarginOffset = settings.showMarginLine ? 50 : 0;
-  const bgOffset = Math.max(0, Math.round(settings.topPaddingPx) - 2);
+  const lineGap = Math.max(14, Math.round(settings.lineGapPx || exactLineHeightPx));
+  const bgOffset = Math.max(0, Math.round(settings.topPaddingPx));
   const leftMarginPos = Math.max(0, Math.round(settings.leftPaddingPx) - 6);
 
   // 2. Crisp Vector Ruled Horizontal Lines
@@ -160,22 +161,25 @@ export async function renderCurrentSheetToCanvas(
     ctx.save();
     ctx.strokeStyle = '#999999';
     ctx.lineWidth = 1.05;
-    let lineY = topMarginOffset + bgOffset + exactLineHeightPx - 0.7;
+    // Start at the first ruled line below topMarginOffset so it never doubles up on y = 50
+    let lineY = topMarginOffset + bgOffset + lineGap - 0.7;
     while (lineY < PAGE_HEIGHT - 2) {
-      ctx.beginPath();
-      ctx.moveTo(0, lineY);
-      ctx.lineTo(PAGE_WIDTH, lineY);
-      ctx.stroke();
-      lineY += exactLineHeightPx;
+      if (Math.abs(lineY - topMarginOffset) > 3) {
+        ctx.beginPath();
+        ctx.moveTo(0, lineY);
+        ctx.lineTo(PAGE_WIDTH, lineY);
+        ctx.stroke();
+      }
+      lineY += lineGap;
     }
     ctx.restore();
   }
 
-  // 3. Crisp Vector Top & Left Margin Lines
+  // 3. Crisp Vector Top & Full-Height Left Margin Lines
   if (settings.showMarginLine && !settings.customPaperBgUrl) {
     ctx.save();
-    ctx.strokeStyle = '#ffc0cb';
-    ctx.lineWidth = 2.0;
+    ctx.strokeStyle = '#f472b6';
+    ctx.lineWidth = 1.65;
 
     // Horizontal top margin line at y = 50
     ctx.beginPath();
@@ -183,9 +187,9 @@ export async function renderCurrentSheetToCanvas(
     ctx.lineTo(PAGE_WIDTH, 50);
     ctx.stroke();
 
-    // Vertical left margin line from y = 50 to PAGE_HEIGHT
+    // Vertical left margin line starting from the very top of the page (y = 0 to PAGE_HEIGHT)
     ctx.beginPath();
-    ctx.moveTo(leftMarginPos, 50);
+    ctx.moveTo(leftMarginPos, 0);
     ctx.lineTo(leftMarginPos, PAGE_HEIGHT);
     ctx.stroke();
     ctx.restore();

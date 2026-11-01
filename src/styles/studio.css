@@ -22,8 +22,8 @@ body {
     Roboto, sans-serif;
   --handwriting-font: 'Cedarville Cursive', cursive;
   --line-height-val: 21px;
-  --line-stop-px: 19.6px;
-  --line-bg-offset: 3px;
+  --line-stop-px: 19.8px;
+  --line-bg-offset: 0px;
   --left-margin-pos: 49px;
   --primary-color: #18181b;
   --ink-color: #1a2f7d;
@@ -225,13 +225,18 @@ button:disabled {
 .draw-button {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 0.78rem;
+  gap: 5px;
+  font-size: 0.76rem;
   font-weight: 500;
-  padding: 6px 12px;
+  padding: 5px 10px;
   border-radius: 9px;
   background-color: var(--surface-row);
   border: 1px solid var(--field-borders);
+}
+
+.expand-sheet-btn {
+  background-color: var(--surface-chip);
+  color: var(--font-color-primary);
 }
 
 .dark-mode-toggle {
@@ -307,6 +312,7 @@ button:disabled {
    ============================================================================ */
 .customization-col {
   flex: 1;
+  min-width: 0;
   padding-left: 36px;
   display: flex;
   flex-direction: column;
@@ -391,6 +397,7 @@ button:disabled {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  min-width: 0;
   min-height: 40px;
   padding: 5px 8px 5px 12px;
   border-radius: 10px;
@@ -399,31 +406,34 @@ button:disabled {
 }
 
 .prop-label {
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 500;
   color: var(--label-color);
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .prop-control {
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  flex: 1;
   min-width: 0;
 }
 
 .notion-chip-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   height: 28px;
-  padding: 0 10px;
-  font-size: 0.76rem;
+  padding: 0 9px;
+  font-size: 0.75rem;
   font-weight: 500;
   border-radius: 7px;
   background-color: var(--surface-chip);
   color: var(--font-color-primary);
   border: none;
+  white-space: nowrap;
 }
 
 .notion-chip-btn.danger {
@@ -442,6 +452,7 @@ button:disabled {
   border: 1px solid var(--field-borders);
   display: inline-flex;
   align-items: center;
+  flex-shrink: 0;
   cursor: pointer;
   transition: background-color 160ms ease;
 }
@@ -504,7 +515,54 @@ button:disabled {
 }
 
 /* ============================================================================
-   Sheet / Page Styling (DO NOT ALTER GEOMETRY — Used by Direct Canvas 2D Engine)
+   Expanded Pop-Up Sheet Editor Modal Mode
+   ============================================================================ */
+.sheet-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(9, 9, 11, 0.86);
+  backdrop-filter: blur(10px);
+  z-index: 9000;
+}
+
+.page-container-super.expanded-modal-mode {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 9010;
+  width: 620px;
+  max-height: 95vh;
+  padding: 20px 24px 24px 24px;
+  border-radius: 20px;
+  background-color: var(--surface-card);
+  border: 1px solid var(--field-borders);
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.78);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-y: auto;
+}
+
+.page-container-super.expanded-modal-mode .section-header-row,
+.page-container-super.expanded-modal-mode .editor-toolbar {
+  width: 552px;
+}
+
+.page-container-super.expanded-modal-mode .sheet-zoom-stage {
+  width: 552px;
+  height: 780px;
+  display: flex;
+  justify-content: center;
+}
+
+.page-container-super.expanded-modal-mode .page-a {
+  transform: scale(1.38);
+  transform-origin: top center;
+}
+
+/* ============================================================================
+   Sheet / Page Stencil Geometry (Consistent Grid & Full-Height Left Margin)
    ============================================================================ */
 .shadow {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
@@ -546,6 +604,19 @@ button:disabled {
   box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.45);
 }
 
+/* Full-height vertical pink margin line starting from the very top of the sheet (y = 0) */
+.page-a.margined::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--left-margin-pos, 49px);
+  width: 1.65px;
+  background-color: #f472b6;
+  pointer-events: none;
+  z-index: 3;
+}
+
 .page-a.custom-paper-bg {
   background-size: 100% 100% !important;
   background-position: center center !important;
@@ -554,7 +625,7 @@ button:disabled {
 
 .paper-content {
   margin: 0px;
-  padding: 5px 14px 16px 55px;
+  padding: 0px 14px 16px 55px;
   width: 100%;
   min-height: 514px;
   font-variant-ligatures: contextual common-ligatures;
@@ -563,23 +634,23 @@ button:disabled {
   outline: none;
 }
 
-/* Standard Adjustable CSS Notebook Lines */
+/* Standard Adjustable CSS Notebook Lines — Clean 1px line at bottom of each row (no double top line) */
 .page-a.lines .paper-content {
   background-image: linear-gradient(
     to bottom,
     transparent 0px,
-    transparent var(--line-stop-px, 19.6px),
-    #999 var(--line-stop-px, 19.6px),
-    #999 var(--line-height-val, 21px)
+    transparent calc(var(--line-height-val, 21px) - 1.15px),
+    #999999 calc(var(--line-height-val, 21px) - 1.15px),
+    #999999 var(--line-height-val, 21px)
   );
   background-color: unset !important;
   background-size: 100% var(--line-height-val, 21px);
-  background-position: 0px var(--line-bg-offset, 3px);
+  background-position: 0px var(--line-bg-offset, 0px);
   background-repeat: repeat-y;
 }
 
 .margined .paper-content {
-  padding: 5px 14px 16px 55px;
+  padding: 0px 14px 16px 55px;
   margin: 0px;
 }
 
@@ -590,16 +661,16 @@ button:disabled {
 
 .margined .top-margin {
   height: 50px;
-  border-bottom: 2px solid pink;
+  border-bottom: 1.65px solid #f472b6;
   width: 100%;
   display: block;
   overflow-y: auto;
 }
 
 .margined .left-margin {
-  width: var(--left-margin-pos, 50px);
+  width: var(--left-margin-pos, 49px);
   min-height: 100%;
-  border-right: 2px solid pink;
+  border-right: 1.65px solid #f472b6;
   top: 0px;
   left: 0;
   bottom: 0;
