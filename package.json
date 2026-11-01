@@ -1,0 +1,14 @@
+{
+  "name": "handwriting-studio",
+  "version": "2.0.0",
+  "private": true,
+  "description": "High-Resolution Humanized Notebook & Sheet Generator with Variable Slant, Ink Pressure & Rich Markdown/HTML Support",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "eslint": "eslint --fix \"js/**/**.mjs\"",
+    "prettier": "prettier --write \"./index.html\" \"js/**/**.mjs\" \"css/**.css\"",
+    "format": "npm run prettier"
+  }
+}
