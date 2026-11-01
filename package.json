@@ -3,7 +3,7 @@
   "version": "3.0.0",
   "private": true,
   "type": "module",
-  "description": "InkScript — Transform digital notes and Markdown into realistic, print-ready A4 handwritten notebook sheets",
+  "description": "InkScript | Transform digital notes and Markdown into realistic, print-ready A4 handwritten notebook sheets",
   "scripts": {
     "dev": "vite --port 3000",
     "build": "tsc -b && vite build",
