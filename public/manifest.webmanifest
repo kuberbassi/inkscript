@@ -3,7 +3,7 @@
   "short_name": "InkScript",
   "icons": [
     {
-      "src": "/favicon.svg",
+      "src": "./favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
@@ -12,6 +12,6 @@
   "theme_color": "#09090b",
   "background_color": "#09090b",
   "display": "standalone",
-  "start_url": "/",
+  "start_url": "./",
   "description": "Transform digital notes and Markdown into realistic, print-ready A4 handwritten notebook pages with a Direct Canvas 2D Vector Engine."
 }
