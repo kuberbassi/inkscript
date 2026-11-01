@@ -170,8 +170,24 @@ h2 {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 14px;
   margin-bottom: 10px;
   width: 400px;
+}
+
+.section-header-title-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex-shrink: 0;
+}
+
+.section-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 .sheet-live-pill {
@@ -180,10 +196,11 @@ h2 {
   gap: 5px;
   padding: 2px 8px;
   border-radius: 999px;
-  font-size: 0.68rem;
+  font-size: 0.67rem;
   font-weight: 600;
   background-color: rgba(34, 197, 94, 0.14);
   color: #22c55e;
+  white-space: nowrap;
 }
 
 .sheet-live-pill::before {
@@ -230,12 +247,14 @@ button:disabled {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 0.76rem;
+  font-size: 0.74rem;
   font-weight: 500;
   padding: 5px 10px;
-  border-radius: 9px;
+  height: 30px;
+  border-radius: 8px;
   background-color: var(--surface-row);
   border: 1px solid var(--field-borders);
+  white-space: nowrap;
 }
 
 .expand-sheet-btn {
@@ -257,15 +276,15 @@ button:disabled {
 }
 
 /* ============================================================================
-   Floating Pill Formatting Toolbar (Image 4 & 5 Aesthetic)
+   Single-Line Floating Pill Formatting Toolbar
    ============================================================================ */
 .editor-toolbar {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  flex-direction: row;
+  align-items: center;
   width: 400px;
-  padding: 6px;
-  border-radius: 14px;
+  padding: 4px 5px;
+  border-radius: 12px;
   border: 1px solid var(--field-borders);
   background-color: var(--surface-card);
   box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.28);
@@ -276,23 +295,25 @@ button:disabled {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 2px;
+  flex-wrap: nowrap;
+  gap: 1px;
   width: 100%;
 }
 
 .toolbar-divider {
   width: 1px;
-  height: 18px;
+  height: 16px;
   background-color: var(--field-borders);
-  margin: 0 2px;
+  margin: 0 1px;
+  flex-shrink: 0;
 }
 
 .tool-btn {
-  width: 38px;
-  height: 34px;
+  width: 22px;
+  height: 28px;
   padding: 0;
-  font-size: 1.05rem;
-  border-radius: 9px;
+  font-size: 0.92rem;
+  border-radius: 6px;
   background-color: transparent;
   color: color-mix(in srgb, var(--font-color-primary) 82%, transparent);
   border: none;
@@ -300,6 +321,7 @@ button:disabled {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
   transition:
     background-color 140ms ease,
     color 140ms ease,
@@ -515,7 +537,7 @@ button:disabled {
 }
 
 /* ============================================================================
-   Expanded Pop-Up Sheet Editor Modal Mode
+   Expanded Pop-Up Sheet Editor Modal Mode (Viewport-Fitted, Zero Modal Scrollbar)
    ============================================================================ */
 .sheet-modal-backdrop {
   position: fixed;
@@ -531,9 +553,10 @@ button:disabled {
   left: 50%;
   transform: translate(-50%, -50%);
   z-index: 9010;
-  width: 620px;
-  max-height: 95vh;
-  padding: 20px 24px 24px 24px;
+  width: calc(var(--modal-stage-w, 496px) + 44px);
+  max-width: 96vw;
+  max-height: 96vh;
+  padding: 14px 22px 18px 22px;
   border-radius: 20px;
   background-color: var(--surface-card);
   border: 1px solid var(--field-borders);
@@ -541,28 +564,35 @@ button:disabled {
   display: flex;
   flex-direction: column;
   align-items: center;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .page-container-super.expanded-modal-mode .section-header-row,
 .page-container-super.expanded-modal-mode .editor-toolbar {
-  width: 552px;
+  width: var(--modal-stage-w, 496px);
+}
+
+.page-container-super.expanded-modal-mode .tool-btn {
+  width: 28px;
+  height: 30px;
+  font-size: 1rem;
+  border-radius: 7px;
 }
 
 .page-container-super.expanded-modal-mode .sheet-zoom-stage {
-  width: 552px;
-  height: 780px;
+  width: var(--modal-stage-w, 496px);
+  height: var(--modal-stage-h, 700px);
   display: flex;
   justify-content: center;
 }
 
 .page-container-super.expanded-modal-mode .page-a {
-  transform: scale(1.38);
+  transform: scale(var(--modal-sheet-scale, 1.24));
   transform-origin: top center;
 }
 
 /* ============================================================================
-   Sheet / Page Stencil Geometry (Consistent Grid & Full-Height Left Margin)
+   Sheet / Page Stencil Geometry (Independent Top Margin & Left Margin)
    ============================================================================ */
 .shadow {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
@@ -582,8 +612,12 @@ button:disabled {
 }
 
 .left-margin-and-content {
-  min-height: calc(100% - 50px);
+  min-height: 100%;
   position: relative;
+}
+
+.top-margined .left-margin-and-content {
+  min-height: calc(100% - 50px);
 }
 
 .page-a {
@@ -604,8 +638,8 @@ button:disabled {
   box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.45);
 }
 
-/* Full-height vertical pink margin line starting from top of .paper-content / .page-a */
-.page-a.margined {
+/* Independent Full-height vertical pink left margin line starting from y = 0 of .page-a */
+.page-a.left-margined {
   background-image: linear-gradient(
     to right,
     transparent 0px,
@@ -628,11 +662,15 @@ button:disabled {
   margin: 0px;
   padding: 0px 14px 16px 55px;
   width: 100%;
-  min-height: 514px;
+  min-height: 550px;
   font-variant-ligatures: contextual common-ligatures;
   font-feature-settings: 'calt' 1, 'liga' 1, 'salt' 1;
   mix-blend-mode: multiply;
   outline: none;
+}
+
+.top-margined .paper-content {
+  min-height: 514px;
 }
 
 /* Standard Adjustable CSS Notebook Lines — Clean 1px line at bottom of each row (no double top line) */
@@ -650,26 +688,18 @@ button:disabled {
   background-repeat: repeat-y;
 }
 
-.margined .paper-content {
-  padding: 0px 14px 16px 55px;
-  margin: 0px;
-}
-
 .left-margin,
 .top-margin {
   display: none;
 }
 
-.margined .top-margin {
+/* Independent 50px Top Margin Header & Horizontal Pink Line */
+.top-margined .top-margin {
   height: 50px;
   border-bottom: 1.5px solid #f472b6;
   width: 100%;
   display: block;
   overflow-y: auto;
-}
-
-.margined .left-margin {
-  display: none;
 }
 
 /* Handwritten Rich Text Styling inside .paper-content — force all pasted elements to inherit sheet typography */
@@ -836,6 +866,13 @@ button:disabled {
   position: relative;
 }
 
+.output-close-wrap {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 3;
+}
+
 .output-card-preview img {
   width: 100%;
   display: block;
@@ -844,9 +881,6 @@ button:disabled {
 }
 
 .output .close-button {
-  position: absolute;
-  right: 8px;
-  top: 8px;
   width: 28px;
   height: 28px;
   border-radius: 8px;
@@ -859,7 +893,6 @@ button:disabled {
   color: #fff;
   font-size: 13px;
   border: 1px solid rgba(255, 255, 255, 0.14);
-  z-index: 2;
 }
 
 .output-card-footer {

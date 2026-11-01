@@ -114,9 +114,9 @@ export const Toolbar: React.FC<ToolbarProps> = ({
               <i className="ph ph-text-align-justify"></i>
             </button>
           </WarmTooltip>
-        </div>
 
-        <div className="toolbar-pill-group">
+          <span className="toolbar-divider" aria-hidden="true" />
+
           <WarmTooltip content="Bullet List" shortcut="•" side="top">
             <button
               type="button"

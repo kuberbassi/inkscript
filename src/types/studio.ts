@@ -22,7 +22,9 @@ export interface StudioSettings {
   letterSpacingPt: number;
   sheetPreset: SheetPreset;
   customPaperBgUrl: string | null;
-  showMarginLine: boolean;
+  showTopMargin: boolean;
+  showLeftMargin: boolean;
+  showMarginLine?: boolean;
   showRuledLines: boolean;
   darkMode: boolean;
 }
@@ -144,6 +146,8 @@ export const DEFAULT_SETTINGS: StudioSettings = {
   letterSpacingPt: 0,
   sheetPreset: 'default',
   customPaperBgUrl: null,
+  showTopMargin: true,
+  showLeftMargin: true,
   showMarginLine: true,
   showRuledLines: true,
   darkMode: true

@@ -81,22 +81,14 @@ const Aurora: React.FC<AuroraProps> = ({
       const stops =
         colorStops && colorStops.length >= 2
           ? colorStops
-          : lightMode
-            ? ['#09090b', '#18181b', '#27272a']
-            : ['#1d4ed8', '#4f46e5', '#0ea5e9'];
+          : ['#3b82f6', '#6366f1', '#0ea5e9'];
 
       ctx.save();
       ctx.globalAlpha = opacity;
 
       // Draw 3 smooth organic flowing aurora ribbons across the top margin
       for (let i = 0; i < 3; i++) {
-        const stopColor = lightMode
-          ? i === 0
-            ? '#09090b'
-            : i === 1
-              ? '#18181b'
-              : '#27272a'
-          : stops[i % stops.length];
+        const stopColor = stops[i % stops.length];
 
         const phase = clock * (0.7 + i * 0.22) + i * 2.1;
         const centerX =

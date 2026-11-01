@@ -97,16 +97,18 @@ export const OutputGallery: React.FC<OutputGalleryProps> = ({
             pages.map((page, index) => (
               <div key={page.id} className="output-image-container">
                 <div className="output-card-preview">
-                  <WarmTooltip content="Remove sheet" side="top">
-                    <button
-                      type="button"
-                      className="close-button"
-                      onClick={() => onRemovePage(index)}
-                      aria-label="Remove Page"
-                    >
-                      <i className="ph ph-x"></i>
-                    </button>
-                  </WarmTooltip>
+                  <div className="output-close-wrap">
+                    <WarmTooltip content="Remove sheet" side="top">
+                      <button
+                        type="button"
+                        className="close-button"
+                        onClick={() => onRemovePage(index)}
+                        aria-label="Remove Page"
+                      >
+                        <i className="ph ph-x"></i>
+                      </button>
+                    </WarmTooltip>
+                  </div>
                   <img
                     className="shadow"
                     alt={`Output page ${index + 1}`}

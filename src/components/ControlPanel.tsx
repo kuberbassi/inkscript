@@ -476,13 +476,13 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           <div className="customizer-card-header">
             <div className="customizer-card-title">
               <i className="ph ph-notebook"></i>
-              <span>Sheet Stencil &amp; Page Lines</span>
+              <span>Sheet Stencil &amp; Margins</span>
             </div>
             <span className="customizer-badge">Independent Stencil Grid</span>
           </div>
 
           <div className="customizer-card-body">
-            <div className="customizer-grid-2">
+            <div className="customizer-grid-3">
               <div className="prop-cell">
                 <span className="prop-label">Template</span>
                 <div className="prop-control">
@@ -504,7 +504,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
               </div>
 
               <ScrubField
-                label="Page Lines Gap"
+                label="Lines Gap"
                 suffix="px"
                 value={settings.lineGapPx}
                 defaultValue={DEFAULT_SETTINGS.lineGapPx}
@@ -518,40 +518,6 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 chipColor={surfaceChip}
                 onChange={(v) => onUpdate({ lineGapPx: v })}
               />
-            </div>
-
-            <div className="customizer-grid-3">
-              <div className="prop-cell">
-                <span className="prop-label">Margin Line</span>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={settings.showMarginLine}
-                  className="notion-switch"
-                  data-checked={settings.showMarginLine ? 'true' : 'false'}
-                  onClick={() =>
-                    onUpdate({ showMarginLine: !settings.showMarginLine })
-                  }
-                >
-                  <span className="notion-switch-thumb" />
-                </button>
-              </div>
-
-              <div className="prop-cell">
-                <span className="prop-label">Ruled Lines</span>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={settings.showRuledLines}
-                  className="notion-switch"
-                  data-checked={settings.showRuledLines ? 'true' : 'false'}
-                  onClick={() =>
-                    onUpdate({ showRuledLines: !settings.showRuledLines })
-                  }
-                >
-                  <span className="notion-switch-thumb" />
-                </button>
-              </div>
 
               <div className="prop-cell">
                 <span className="prop-label">Custom Scan</span>
@@ -584,6 +550,67 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                     </span>
                   </button>
                 </div>
+              </div>
+            </div>
+
+            <div className="customizer-grid-3">
+              <div className="prop-cell">
+                <span className="prop-label">Top Margin</span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={settings.showTopMargin}
+                  className="notion-switch"
+                  data-checked={settings.showTopMargin ? 'true' : 'false'}
+                  onClick={() =>
+                    onUpdate({ showTopMargin: !settings.showTopMargin })
+                  }
+                >
+                  <span className="notion-switch-thumb" />
+                </button>
+              </div>
+
+              <div className="prop-cell">
+                <span className="prop-label">Left Margin</span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={settings.showLeftMargin}
+                  className="notion-switch"
+                  data-checked={settings.showLeftMargin ? 'true' : 'false'}
+                  onClick={() => {
+                    const nextLeft = !settings.showLeftMargin;
+                    const nextLeftPad = nextLeft
+                      ? settings.leftPaddingPx < 36
+                        ? 55
+                        : settings.leftPaddingPx
+                      : settings.leftPaddingPx === 55
+                        ? 22
+                        : settings.leftPaddingPx;
+                    onUpdate({
+                      showLeftMargin: nextLeft,
+                      leftPaddingPx: nextLeftPad
+                    });
+                  }}
+                >
+                  <span className="notion-switch-thumb" />
+                </button>
+              </div>
+
+              <div className="prop-cell">
+                <span className="prop-label">Ruled Lines</span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={settings.showRuledLines}
+                  className="notion-switch"
+                  data-checked={settings.showRuledLines ? 'true' : 'false'}
+                  onClick={() =>
+                    onUpdate({ showRuledLines: !settings.showRuledLines })
+                  }
+                >
+                  <span className="notion-switch-thumb" />
+                </button>
               </div>
             </div>
           </div>

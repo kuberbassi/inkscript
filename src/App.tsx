@@ -31,9 +31,12 @@ export const App: React.FC = () => {
       const saved = localStorage.getItem(STORAGE_KEY_SETTINGS);
       if (saved) {
         const parsed = JSON.parse(saved);
+        const fallbackMargin = parsed.showMarginLine ?? true;
         return {
           ...DEFAULT_SETTINGS,
           ...parsed,
+          showTopMargin: parsed.showTopMargin ?? fallbackMargin,
+          showLeftMargin: parsed.showLeftMargin ?? fallbackMargin,
           lineGapPx: parsed.lineGapPx ?? DEFAULT_SETTINGS.lineGapPx,
           // Migrate legacy default topPaddingPx=5 to 0 so ruled lines never shift
           topPaddingPx: parsed.topPaddingPx === 5 ? 0 : (parsed.topPaddingPx ?? 0)
@@ -50,10 +53,24 @@ export const App: React.FC = () => {
   const [chipStatus, setChipStatus] = useState<CallChipStatus>('idle');
   const [isDrawOpen, setIsDrawOpen] = useState(false);
   const [isExpandedEditor, setIsExpandedEditor] = useState(false);
+  const [expandedScale, setExpandedScale] = useState(1.24);
 
   const pageElRef = useRef<HTMLDivElement | null>(null);
   const paperContentRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+
+  // Dynamically size Pop-Up View scale so the modal never needs a vertical scrollbar
+  useEffect(() => {
+    const updateModalScale = () => {
+      const vh = window.innerHeight || 900;
+      const availableSheetHeight = vh * 0.94 - 104;
+      const fitScale = Math.min(1.38, Math.max(1.02, availableSheetHeight / 564));
+      setExpandedScale(Number(fitScale.toFixed(3)));
+    };
+    updateModalScale();
+    window.addEventListener('resize', updateModalScale);
+    return () => window.removeEventListener('resize', updateModalScale);
+  }, []);
 
   // Strip any leftover inline font-size/font-family/line-height from saved content
   const cleanInlineFontOverrides = useCallback((el: HTMLElement) => {
@@ -150,10 +167,12 @@ export const App: React.FC = () => {
         sheetPreset: 'blank',
         customPaperBgUrl: null,
         showRuledLines: false,
+        showTopMargin: false,
+        showLeftMargin: false,
         showMarginLine: false,
         lineGapPx: 22,
         topPaddingPx: 24,
-        leftPaddingPx: 32
+        leftPaddingPx: 28
       }));
     } else {
       setSettings((prev) => ({
@@ -161,6 +180,8 @@ export const App: React.FC = () => {
         sheetPreset: 'default',
         customPaperBgUrl: null,
         showRuledLines: true,
+        showTopMargin: true,
+        showLeftMargin: true,
         showMarginLine: true,
         lineGapPx: 21,
         topPaddingPx: 0,
@@ -195,6 +216,8 @@ export const App: React.FC = () => {
         ...prev,
         customPaperBgUrl: dataUrl,
         showRuledLines: false,
+        showTopMargin: false,
+        showLeftMargin: false,
         showMarginLine: false
       }));
     };
@@ -374,29 +397,30 @@ export const App: React.FC = () => {
     exportPagesToPDF(pages);
   }, [pages]);
 
-  // Dynamic Aurora color stops synced with active Ink Color & Studio theme
+  // Dynamic colorful Aurora stops synced with active Ink Color in both Dark & Light themes
   const auroraStops = useMemo(() => {
-    if (!settings.darkMode) {
-      return ['#000000', '#18181b', '#27272a'];
-    }
     const ink = settings.inkColor || '#1a2f7d';
     if (ink === '#1a1a1a') {
-      return ['#3f3f46', '#71717a', '#52525b'];
+      return ['#4f46e5', '#0ea5e9', '#8b5cf6'];
     }
     if (ink === '#ba3807') {
-      return ['#dc2626', '#f43f5e', '#991b1b'];
+      return ['#ef4444', '#f43f5e', '#f97316'];
     }
-    return [ink, '#4f46e5', '#38bdf8'];
-  }, [settings.inkColor, settings.darkMode]);
+    return ['#3b82f6', '#6366f1', '#0ea5e9'];
+  }, [settings.inkColor]);
 
   const pageClassNames = [
     'page-a',
-    settings.showMarginLine ? 'margined' : '',
+    settings.showTopMargin ? 'top-margined' : '',
+    settings.showLeftMargin ? 'left-margined' : '',
     settings.showRuledLines ? 'lines' : '',
     settings.customPaperBgUrl ? 'custom-paper-bg' : ''
   ]
     .filter(Boolean)
     .join(' ');
+
+  const modalZoomWidth = Math.round(400 * expandedScale);
+  const modalZoomHeight = Math.round(564 * expandedScale);
 
   return (
     <ClickSpark
@@ -408,7 +432,7 @@ export const App: React.FC = () => {
       duration={420}
       easing="ease-out"
     >
-      {/* Top Margin Aurora Effect Synced & Optimized */}
+      {/* Top Margin Colorful Aurora Effect Synced & Optimized */}
       <div className="aurora-top-banner" aria-hidden="true">
         <Aurora
           colorStops={auroraStops}
@@ -416,7 +440,7 @@ export const App: React.FC = () => {
           blend={0.55}
           speed={0.75}
           height={0.55}
-          opacity={settings.darkMode ? 0.32 : 0.18}
+          opacity={settings.darkMode ? 0.34 : 0.28}
           lightMode={!settings.darkMode}
           mouseInteraction
         />
@@ -472,16 +496,25 @@ export const App: React.FC = () => {
                 className={`flex-1 page-container-super ${
                   isExpandedEditor ? 'expanded-modal-mode' : ''
                 }`}
+                style={
+                  isExpandedEditor
+                    ? ({
+                        '--modal-sheet-scale': expandedScale,
+                        '--modal-stage-w': `${modalZoomWidth}px`,
+                        '--modal-stage-h': `${modalZoomHeight}px`
+                      } as React.CSSProperties)
+                    : undefined
+                }
               >
                 <div className="section-header-row">
-                  <div className="flex items-center gap-2">
+                  <div className="section-header-title-group">
                     <h2 style={{ margin: 0 }}>
                       {isExpandedEditor ? 'Expanded Sheet Editor' : 'Sheet Canvas'}
                     </h2>
                     <span className="sheet-live-pill">Live</span>
                   </div>
 
-                  <div className="flex items-center gap-1.5">
+                  <div className="section-header-actions">
                     <WarmTooltip
                       content="Insert diagram image or open freehand sketch pad"
                       shortcut="Diagram"
@@ -494,7 +527,7 @@ export const App: React.FC = () => {
                         onClick={() => setIsDrawOpen(true)}
                       >
                         <i className="ph ph-image-square"></i>
-                        <span>Insert Diagram</span>
+                        <span>Diagram</span>
                       </button>
                     </WarmTooltip>
 
@@ -519,7 +552,7 @@ export const App: React.FC = () => {
                               : 'ph ph-arrows-out-simple'
                           }
                         ></i>
-                        <span>{isExpandedEditor ? 'Minimize' : 'Pop-Up View'}</span>
+                        <span>{isExpandedEditor ? 'Minimize' : 'Pop-Up'}</span>
                       </button>
                     </WarmTooltip>
                   </div>

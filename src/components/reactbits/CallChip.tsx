@@ -171,9 +171,24 @@ const CallChip: React.FC<CallChipProps> = ({
   }, [status]);
 
   const font = Math.max(11, Math.round(size * 0.38));
-  const glyphState = (g: Glyph) => (g === roll.current.cur ? 'in' : g === roll.current.prev ? 'out' : undefined);
+  const glyphState = (g: Glyph) => (g === roll.current.cur ? 'in' : g === roll.current.prev ? 'out' : 'idle');
   const toolIcon = typeof icon === 'string' ? (ICONS[icon as CallChipIcon] ?? ICONS.terminal) : null;
   const iconSize = font + 2;
+
+  const getGlyphStyle = (g: Glyph): CSSProperties => {
+    const st = glyphState(g);
+    const isDone = status === 'done' && st === 'in';
+    const isErr = status === 'error' && st === 'in';
+    return {
+      opacity: st === 'in' ? 1 : 0,
+      transform: st === 'in' ? 'translateY(0)' : st === 'out' ? 'translateY(-65%)' : 'translateY(65%)',
+      filter: 'none',
+      color: isDone ? doneColor : isErr ? errorColor : undefined,
+      transition: mounted
+        ? 'opacity 200ms cubic-bezier(0.23,1,0.32,1), transform 200ms cubic-bezier(0.23,1,0.32,1)'
+        : 'none'
+    };
+  };
 
   return (
     <span
@@ -209,26 +224,26 @@ const CallChip: React.FC<CallChipProps> = ({
         aria-hidden="true"
       />
       <span
-        className="relative flex-none overflow-hidden [width:calc(var(--cc-font)+2px)] [height:calc(var(--cc-font)+2px)]"
+        className="relative flex-none overflow-hidden [width:calc(var(--cc-font)+4px)] [height:calc(var(--cc-font)+4px)]"
         aria-hidden="true"
       >
         <span
-          className="absolute inset-0 grid place-items-center opacity-0 blur-[3px] [transform:translateY(70%)] data-[state=in]:opacity-100 data-[state=in]:blur-0 data-[state=in]:[transform:none] data-[state=in]:[transition:opacity_240ms_cubic-bezier(0.23,1,0.32,1),transform_240ms_cubic-bezier(0.23,1,0.32,1),filter_240ms_cubic-bezier(0.23,1,0.32,1)] data-[state=out]:[transform:translateY(-70%)] data-[state=out]:[transition:opacity_160ms_cubic-bezier(0.23,1,0.32,1),transform_160ms_cubic-bezier(0.23,1,0.32,1),filter_160ms_cubic-bezier(0.23,1,0.32,1)] group-data-[status=done]:data-[state=in]:[color:var(--cc-done)] group-data-[status=error]:data-[state=in]:[color:var(--cc-error)] motion-reduce:[transform:none]! motion-reduce:[filter:none]! group-not-data-[mounted]:transition-none!"
-          data-state={glyphState('tool')}
+          className="absolute inset-0 flex items-center justify-center"
+          style={getGlyphStyle('tool')}
         >
-          {toolIcon ? <HugeiconsIcon icon={toolIcon} size={iconSize} strokeWidth={1.8} /> : icon}
+          {toolIcon ? <HugeiconsIcon icon={toolIcon} size={iconSize} strokeWidth={1.9} /> : icon}
         </span>
         <span
-          className="absolute inset-0 grid place-items-center opacity-0 blur-[3px] [transform:translateY(70%)] data-[state=in]:opacity-100 data-[state=in]:blur-0 data-[state=in]:[transform:none] data-[state=in]:[transition:opacity_240ms_cubic-bezier(0.23,1,0.32,1),transform_240ms_cubic-bezier(0.23,1,0.32,1),filter_240ms_cubic-bezier(0.23,1,0.32,1)] data-[state=out]:[transform:translateY(-70%)] data-[state=out]:[transition:opacity_160ms_cubic-bezier(0.23,1,0.32,1),transform_160ms_cubic-bezier(0.23,1,0.32,1),filter_160ms_cubic-bezier(0.23,1,0.32,1)] group-data-[status=done]:data-[state=in]:[color:var(--cc-done)] group-data-[status=error]:data-[state=in]:[color:var(--cc-error)] motion-reduce:[transform:none]! motion-reduce:[filter:none]! group-not-data-[mounted]:transition-none!"
-          data-state={glyphState('check')}
+          className="absolute inset-0 flex items-center justify-center"
+          style={getGlyphStyle('check')}
         >
-          <HugeiconsIcon icon={Tick02Icon} size={iconSize} strokeWidth={2.2} />
+          <HugeiconsIcon icon={Tick02Icon} size={iconSize} strokeWidth={2.4} />
         </span>
         <span
-          className="absolute inset-0 grid place-items-center opacity-0 blur-[3px] [transform:translateY(70%)] data-[state=in]:opacity-100 data-[state=in]:blur-0 data-[state=in]:[transform:none] data-[state=in]:[transition:opacity_240ms_cubic-bezier(0.23,1,0.32,1),transform_240ms_cubic-bezier(0.23,1,0.32,1),filter_240ms_cubic-bezier(0.23,1,0.32,1)] data-[state=out]:[transform:translateY(-70%)] data-[state=out]:[transition:opacity_160ms_cubic-bezier(0.23,1,0.32,1),transform_160ms_cubic-bezier(0.23,1,0.32,1),filter_160ms_cubic-bezier(0.23,1,0.32,1)] group-data-[status=done]:data-[state=in]:[color:var(--cc-done)] group-data-[status=error]:data-[state=in]:[color:var(--cc-error)] motion-reduce:[transform:none]! motion-reduce:[filter:none]! group-not-data-[mounted]:transition-none!"
-          data-state={glyphState('retry')}
+          className="absolute inset-0 flex items-center justify-center"
+          style={getGlyphStyle('retry')}
         >
-          <HugeiconsIcon icon={RefreshIcon} size={iconSize} strokeWidth={2} />
+          <HugeiconsIcon icon={RefreshIcon} size={iconSize} strokeWidth={2.1} />
         </span>
       </span>
       <span className="relative font-medium" aria-hidden="true">
