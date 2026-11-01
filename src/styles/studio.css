@@ -672,7 +672,16 @@ button:disabled {
   display: none;
 }
 
-/* Handwritten Rich Text Styling inside .paper-content */
+/* Handwritten Rich Text Styling inside .paper-content — force all pasted elements to inherit sheet typography */
+.paper-content * {
+  font-family: inherit !important;
+  font-size: inherit !important;
+  line-height: inherit !important;
+  word-spacing: inherit !important;
+  letter-spacing: inherit !important;
+  color: inherit !important;
+}
+
 .paper-content b,
 .paper-content strong {
   font-weight: 700;
@@ -694,9 +703,12 @@ button:disabled {
 .paper-content div,
 .paper-content ul,
 .paper-content ol,
-.paper-content li {
+.paper-content li,
+.paper-content span,
+.paper-content font {
   margin: 0;
-  line-height: inherit;
+  line-height: inherit !important;
+  font-size: inherit !important;
 }
 
 .paper-content ul,

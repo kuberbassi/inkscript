@@ -79,7 +79,9 @@ export function splitIntoSmoothSyllables(word: string): string[] {
 export function applyHumanRealismToDOM(
   paperContentEl: HTMLElement,
   intensity = 1.35,
-  seed = 42197
+  seed = 42197,
+  baseLetterSpacingPt = 0,
+  baseWordSpacingPx = 0
 ): () => void {
   const originalHTML = paperContentEl.innerHTML;
   if (intensity <= 0) {
@@ -88,6 +90,8 @@ export function applyHumanRealismToDOM(
 
   const rng = new SeededRandom(seed);
   const eff = clamp(intensity * 0.75, 0.3, 1.35);
+  const userLetterSpacePx = (baseLetterSpacingPt * 4) / 3;
+  const userWordSpacePx = baseWordSpacingPx;
 
   let wavePhase = rng.uniform(0, Math.PI * 2);
   let slantPhase = rng.uniform(0, Math.PI * 2);
@@ -124,7 +128,10 @@ export function applyHumanRealismToDOM(
       decSpan.style.textDecorationLine = ancestorDecoration;
       const uSkew = rng.uniform(-1.8, 1.4) * eff;
       decSpan.style.transform = `skewX(${uSkew.toFixed(2)}deg) scale(1.02, 0.99)`;
-      decSpan.style.letterSpacing = `${(rng.uniform(0.08, 0.25) * eff).toFixed(2)}px`;
+      decSpan.style.letterSpacing = `${(userLetterSpacePx + rng.uniform(0.08, 0.25) * eff).toFixed(2)}px`;
+      if (userWordSpacePx !== 0) {
+        decSpan.style.wordSpacing = `${userWordSpacePx.toFixed(2)}px`;
+      }
       decSpan.style.opacity = rng.uniform(0.93, 0.99).toFixed(2);
       decSpan.style.textShadow = '0.18px 0.06px 0px currentColor';
       textNode.parentNode?.replaceChild(decSpan, textNode);
@@ -159,9 +166,9 @@ export function applyHumanRealismToDOM(
         (Math.sin(slantPhase) * 1.8 + rng.uniform(-1.6, 1.4)) * eff;
 
       const endsWithPunct = /[.,!?;:\-]$/.test(token);
-      let wordGapPx = rng.uniform(0.0, 0.95) * eff;
+      let wordGapPx = userWordSpacePx + rng.uniform(0.0, 0.95) * eff;
       if (endsWithPunct) {
-        wordGapPx = rng.uniform(0.6, 1.75) * eff;
+        wordGapPx = userWordSpacePx + rng.uniform(0.6, 1.75) * eff;
       }
 
       const wordSpan = document.createElement('span');
@@ -218,7 +225,7 @@ export function applyHumanRealismToDOM(
           3
         )}, ${scaleY.toFixed(3)})`;
 
-        const letterSpacePx = rng.uniform(0.04, 0.28) * eff;
+        const letterSpacePx = userLetterSpacePx + rng.uniform(0.04, 0.28) * eff;
         sylSpan.style.letterSpacing = `${letterSpacePx.toFixed(2)}px`;
 
         let localPressure = penPressure + rng.uniform(-0.14, 0.16);

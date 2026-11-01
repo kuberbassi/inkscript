@@ -34,7 +34,9 @@ export const App: React.FC = () => {
         return {
           ...DEFAULT_SETTINGS,
           ...parsed,
-          lineGapPx: parsed.lineGapPx ?? DEFAULT_SETTINGS.lineGapPx
+          lineGapPx: parsed.lineGapPx ?? DEFAULT_SETTINGS.lineGapPx,
+          // Migrate legacy default topPaddingPx=5 to 0 so ruled lines never shift
+          topPaddingPx: parsed.topPaddingPx === 5 ? 0 : (parsed.topPaddingPx ?? 0)
         };
       }
     } catch {
@@ -53,13 +55,32 @@ export const App: React.FC = () => {
   const paperContentRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
+  // Strip any leftover inline font-size/font-family/line-height from saved content
+  const cleanInlineFontOverrides = useCallback((el: HTMLElement) => {
+    const styledEls = el.querySelectorAll<HTMLElement>('[style], font');
+    styledEls.forEach((child) => {
+      if (child.style) {
+        child.style.fontSize = '';
+        child.style.fontFamily = '';
+        child.style.lineHeight = '';
+        child.style.color = '';
+      }
+      if (child.tagName.toLowerCase() === 'font') {
+        child.removeAttribute('size');
+        child.removeAttribute('face');
+        child.removeAttribute('color');
+      }
+    });
+  }, []);
+
   // Load initial editor content once
   useEffect(() => {
     if (paperContentRef.current) {
       const savedContent = localStorage.getItem(STORAGE_KEY_CONTENT);
       paperContentRef.current.innerHTML = savedContent || DEFAULT_INITIAL_HTML;
+      cleanInlineFontOverrides(paperContentRef.current);
     }
-  }, []);
+  }, [cleanInlineFontOverrides]);
 
   // Close expanded editor on Escape key
   useEffect(() => {
@@ -101,7 +122,6 @@ export const App: React.FC = () => {
   // Sync CSS custom variables for the Live Sheet Preview
   useEffect(() => {
     const lineStopPx = Math.max(1, +(exactLineHeightPx - 1.2).toFixed(2));
-    const bgOffset = Math.max(0, Math.round(settings.topPaddingPx));
     const leftMarginPos = Math.max(0, Math.round(settings.leftPaddingPx) - 6);
 
     const fontToUse = settings.customFontName
@@ -115,7 +135,7 @@ export const App: React.FC = () => {
       `${exactLineHeightPx}px`
     );
     document.body.style.setProperty('--line-stop-px', `${lineStopPx}px`);
-    document.body.style.setProperty('--line-bg-offset', `${bgOffset}px`);
+    document.body.style.setProperty('--line-bg-offset', '0px');
     document.body.style.setProperty('--left-margin-pos', `${leftMarginPos}px`);
   }, [settings, exactLineHeightPx]);
 
@@ -217,9 +237,12 @@ export const App: React.FC = () => {
       }
 
       document.execCommand('insertHTML', false, finalHTML);
+      if (paperContentRef.current) {
+        cleanInlineFontOverrides(paperContentRef.current);
+      }
       saveEditorContent();
     },
-    [saveEditorContent]
+    [saveEditorContent, cleanInlineFontOverrides]
   );
 
   const handleCopy = useCallback((e: React.ClipboardEvent<HTMLDivElement>) => {

@@ -153,23 +153,19 @@ export async function renderCurrentSheetToCanvas(
 
   const topMarginOffset = settings.showMarginLine ? 50 : 0;
   const lineGap = Math.max(14, Math.round(settings.lineGapPx || exactLineHeightPx));
-  const bgOffset = Math.max(0, Math.round(settings.topPaddingPx));
   const leftMarginPos = Math.max(0, Math.round(settings.leftPaddingPx) - 6);
 
-  // 2. Crisp Vector Ruled Horizontal Lines
+  // 2. Crisp Vector Ruled Horizontal Lines (Locked to sheet stencil; starts strictly at row 1 below top margin)
   if (settings.showRuledLines && !settings.customPaperBgUrl) {
     ctx.save();
     ctx.strokeStyle = '#999999';
     ctx.lineWidth = 1.05;
-    // Start at the first ruled line below topMarginOffset so it never doubles up on y = 50
-    let lineY = topMarginOffset + bgOffset + lineGap - 0.7;
+    let lineY = topMarginOffset + lineGap - 0.6;
     while (lineY < PAGE_HEIGHT - 2) {
-      if (Math.abs(lineY - topMarginOffset) > 3) {
-        ctx.beginPath();
-        ctx.moveTo(0, lineY);
-        ctx.lineTo(PAGE_WIDTH, lineY);
-        ctx.stroke();
-      }
+      ctx.beginPath();
+      ctx.moveTo(0, lineY);
+      ctx.lineTo(PAGE_WIDTH, lineY);
+      ctx.stroke();
       lineY += lineGap;
     }
     ctx.restore();
@@ -457,7 +453,9 @@ export async function generateHandwrittenPages(
     applyHumanRealismToDOM(
       paperContentEl,
       settings.realismIntensity,
-      settings.realismSeed
+      settings.realismSeed,
+      settings.letterSpacingPt,
+      settings.wordSpacingPx
     );
 
     const blocks = Array.from(paperContentEl.children).map(
