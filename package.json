@@ -2,6 +2,7 @@
   "name": "inkscript-studio",
   "version": "3.0.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "InkScript | Transform digital notes and Markdown into realistic, print-ready A4 handwritten notebook sheets",
   "scripts": {
