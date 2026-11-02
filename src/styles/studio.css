@@ -66,11 +66,6 @@ body.dark {
   --font-color-delete: #ef4444;
 }
 
-@font-face {
-  font-family: 'Hindi_Font';
-  src: url('/fonts/Hindi_Type.ttf');
-}
-
 * {
   box-sizing: border-box;
 }

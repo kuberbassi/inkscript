@@ -128,10 +128,10 @@ export const HANDWRITING_FONTS: FontOption[] = [
     previewFont: "'Liu Jian Mao Cao', cursive"
   },
   {
-    label: 'Kruti-dev (Hindi)',
-    shortLabel: 'Kruti-dev Hindi',
-    value: 'Hindi_Font',
-    previewFont: 'Hindi_Font'
+    label: 'Noto Sans Devanagari (Unicode Hindi)',
+    shortLabel: 'Unicode Hindi',
+    value: "'Noto Sans Devanagari', 'Nirmala UI', sans-serif",
+    previewFont: "'Noto Sans Devanagari', 'Nirmala UI', sans-serif"
   }
 ];
 
