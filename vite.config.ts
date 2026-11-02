@@ -9,6 +9,16 @@ export default defineConfig({
     port: 3000,
     open: false
   },
+  optimizeDeps: {
+    include: [
+      'react',
+      'react-dom',
+      'motion/react',
+      'jspdf',
+      '@hugeicons/react',
+      '@hugeicons/core-free-icons'
+    ]
+  },
   build: {
     outDir: 'dist',
     sourcemap: false,

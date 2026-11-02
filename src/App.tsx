@@ -515,6 +515,50 @@ export const App: React.FC = () => {
           onAddImageToPaper={handleAddSketchToPaper}
         />
       </main>
+
+      <footer className="site-footer">
+        <div className="site-footer-inner">
+          <a
+            className="footer-signature"
+            href="https://kuberbassi.com"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Kuber Bassi website"
+          >
+            <span className="footer-mark" aria-hidden="true">
+              KB
+            </span>
+            <span className="footer-credit">
+              <span>Crafted by</span>
+              <strong>Kuber Bassi</strong>
+            </span>
+          </a>
+
+          <p className="footer-copyright">
+            <span>© {new Date().getFullYear()} Kuber Bassi</span>
+            <span className="footer-separator" aria-hidden="true">
+              /
+            </span>
+            <span>InkScript</span>
+          </p>
+
+          <nav className="footer-links" aria-label="Footer links">
+            <a href="https://kuberbassi.com" target="_blank" rel="noreferrer">
+              kuberbassi.com
+              <i className="ph ph-arrow-up-right" aria-hidden="true"></i>
+            </a>
+            <a
+              href="https://github.com/kuberbassi/inkscript"
+              target="_blank"
+              rel="noreferrer"
+            >
+              <i className="ph ph-github-logo" aria-hidden="true"></i>
+              Repository
+              <i className="ph ph-arrow-up-right" aria-hidden="true"></i>
+            </a>
+          </nav>
+        </div>
+      </footer>
     </ClickSpark>
   );
 };
