@@ -308,6 +308,15 @@ export async function renderCurrentSheetToCanvas(
           let curX = x;
           for (const sylData of syllables) {
             const syl = sylData.syllable;
+            const isCapitalSyllable = /^[A-Z]+$/.test(syl);
+            const sylFontFamily =
+              isCapitalSyllable &&
+              fontFamily.includes('Cedarville Cursive') &&
+              !fontFamily.includes('Cedarville Classic')
+                ? `'Caveat', cursive`
+                : fontFamily;
+
+            ctx.font = `${fontStyle} ${fontWeight} ${fontSizePx.toFixed(2)}px ${sylFontFamily}`;
             const sylMetrics = ctx.measureText(syl);
             const sylW = sylMetrics.width;
 

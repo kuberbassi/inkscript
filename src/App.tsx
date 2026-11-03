@@ -473,7 +473,7 @@ export const App: React.FC = () => {
                             paddingLeft: `${settings.leftPaddingPx}px`,
                             textShadow:
                               settings.realismIntensity > 0
-                                ? `${(0.22 * settings.realismIntensity).toFixed(2)}px ${(0.08 * settings.realismIntensity).toFixed(2)}px 0px ${settings.inkColor}`
+                                ? `${(0.12 * settings.realismIntensity).toFixed(2)}px ${(0.04 * settings.realismIntensity).toFixed(2)}px 0px ${settings.inkColor}`
                                 : undefined
                           }}
                           onInput={saveEditorContent}

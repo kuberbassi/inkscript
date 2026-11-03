@@ -1,6 +1,29 @@
 @import "tailwindcss";
 
 /* ============================================================================
+   Natural Casual Capitals for Cedarville Cursive
+   Replaces ornate Spencerian calligraphy capitals (A-Z) with clean,
+   casual handwritten capitals from Caveat so letters like 'L', 'E', 'D', 'I'
+   look like relaxed natural handwriting matching the rest of the loose cursive style.
+   ============================================================================ */
+@font-face {
+  font-family: 'Cedarville Classic';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/cedarvillecursive/v18/yYL00g_a2veiudhUmxjo5VKkoqA-B_neJQ.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Cedarville Cursive';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/caveat/v23/WnznHAc5bAfYB2QRah7pcpNvOx-pjfJ9SII.ttf') format('truetype');
+  unicode-range: U+0041-005A;
+}
+
+/* ============================================================================
    Handwriting Studio v3.0 — Notion-Inspired Soft Zinc Dark & React Bits Theme
    ============================================================================ */
 

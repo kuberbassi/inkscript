@@ -92,6 +92,12 @@ export const HANDWRITING_FONTS: FontOption[] = [
     previewFont: "'Cedarville Cursive', cursive"
   },
   {
+    label: 'Cedarville Cursive (Ornate Spencerian / Formal)',
+    shortLabel: 'Cedarville Formal',
+    value: "'Cedarville Classic', cursive",
+    previewFont: "'Cedarville Classic', cursive"
+  },
+  {
     label: 'Patrick Hand (Student Print)',
     shortLabel: 'Patrick Hand',
     value: "'Patrick Hand', cursive",
