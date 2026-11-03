@@ -1,8 +1,7 @@
 import { SHEET_GEOMETRY, STENCIL_COLORS } from '../constants/studioTokens';
 import { GeneratedPage, StudioSettings } from '../types/studio';
-import { computeWordRealism } from './humanizer';
+import { HandwritingHumanizer } from './humanizer';
 import { extractLogicalUnits, joinLogicalLines } from './markdownParser';
-import { SeededRandom } from './prng';
 
 const PAGE_WIDTH = SHEET_GEOMETRY.WIDTH_PX;
 const PAGE_HEIGHT = SHEET_GEOMETRY.HEIGHT_PX;
@@ -237,7 +236,10 @@ export async function renderCurrentSheetToCanvas(
   const underlineRaw: DecorationSegment[] = [];
   const strikeRaw: DecorationSegment[] = [];
 
-  const wordRng = new SeededRandom(pageSeed);
+  const humanizer = new HandwritingHumanizer(
+    pageSeed,
+    settings.realismIntensity
+  );
   const walker = document.createTreeWalker(
     paperContentEl,
     NodeFilter.SHOW_TEXT,
@@ -297,58 +299,76 @@ export async function renderCurrentSheetToCanvas(
         const baselineY = y + fontAscent;
 
         if (baselineY > 0 && y < PAGE_HEIGHT) {
-          const realism = computeWordRealism(
+          const syllables = humanizer.computeWordSyllables(
             word,
-            wordRng,
-            settings.realismIntensity,
-            isBold
+            isBold,
+            isItalic
           );
 
-          ctx.save();
-          ctx.fillStyle = settings.inkColor;
+          let curX = x;
+          for (const sylData of syllables) {
+            const syl = sylData.syllable;
+            const sylMetrics = ctx.measureText(syl);
+            const sylW = sylMetrics.width;
 
-          // Pivot micro-slant & scale strictly on (x + w/2, baselineY) so the word never leaves the ruled line
-          const pivotX = x + w * 0.5;
-          const pivotY = baselineY;
-          ctx.translate(pivotX, pivotY);
-          if (
-            realism.skewRad !== 0 ||
-            realism.scaleX !== 1 ||
-            realism.scaleY !== 1
-          ) {
-            ctx.transform(
-              realism.scaleX,
-              0,
-              Math.tan(realism.skewRad),
-              realism.scaleY,
-              0,
-              0
-            );
-          }
-          ctx.translate(-pivotX, -pivotY);
-
-          const drawWord = (ox: number, oy: number) => {
-            if (Math.abs(letterSpacingPx) < 0.02) {
-              ctx.fillText(word, x + ox, baselineY + oy);
-            } else {
-              let curX = x + ox;
-              for (const ch of word) {
-                ctx.fillText(ch, curX, baselineY + oy);
-                curX += ctx.measureText(ch).width + letterSpacingPx;
-              }
-            }
-          };
-
-          if (realism.shadowAlpha > 0) {
             ctx.save();
-            ctx.globalAlpha = realism.shadowAlpha;
-            drawWord(realism.shadowOffsetX, realism.shadowOffsetY);
-            ctx.restore();
-          }
+            const pivotX = curX + sylW * 0.5;
+            const pivotY = baselineY;
+            ctx.translate(pivotX, pivotY);
 
-          ctx.globalAlpha = realism.opacity;
-          drawWord(0, 0);
-          ctx.restore();
+            if (sylData.rotateRad !== 0) {
+              ctx.rotate(sylData.rotateRad);
+            }
+            if (
+              sylData.skewRad !== 0 ||
+              sylData.scaleX !== 1 ||
+              sylData.scaleY !== 1
+            ) {
+              ctx.transform(
+                sylData.scaleX,
+                0,
+                Math.tan(sylData.skewRad),
+                sylData.scaleY,
+                0,
+                0
+              );
+            }
+            ctx.translate(-pivotX, -pivotY);
+
+            // 1. Draw physical pen stroke width for true thickness inconsistency!
+            if (sylData.strokeWidth > 0) {
+              ctx.save();
+              ctx.strokeStyle = settings.inkColor;
+              ctx.lineWidth = sylData.strokeWidth;
+              ctx.lineJoin = 'round';
+              ctx.lineCap = 'round';
+              ctx.globalAlpha = Math.min(1.0, sylData.opacity * 1.05);
+              ctx.strokeText(syl, curX, baselineY);
+              ctx.restore();
+            }
+
+            // 2. Directional ink bleed / paper deposit pass
+            if (sylData.shadowAlpha > 0) {
+              ctx.save();
+              ctx.fillStyle = settings.inkColor;
+              ctx.globalAlpha = sylData.shadowAlpha;
+              ctx.fillText(
+                syl,
+                curX + sylData.shadowOffsetX,
+                baselineY + sylData.shadowOffsetY
+              );
+              ctx.restore();
+            }
+
+            // 3. Main ink fill
+            ctx.fillStyle = settings.inkColor;
+            ctx.globalAlpha = sylData.opacity;
+            ctx.fillText(syl, curX, baselineY);
+
+            ctx.restore();
+
+            curX += sylW + letterSpacingPx + sylData.letterSpacingOffset;
+          }
 
           // Record glyph-tight underline & strikethrough anchored to the alphabetic baseline
           if (isUnderlined) {
