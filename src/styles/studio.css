@@ -114,7 +114,6 @@ body.dark {
 
 .studio-main {
   position: relative;
-  z-index: 1;
   max-width: 1320px;
   margin: 0 auto;
   padding: 28px 40px 56px 40px;
@@ -122,10 +121,17 @@ body.dark {
 
 .site-footer {
   position: relative;
-  z-index: 1;
+  z-index: 0;
   max-width: 1240px;
   margin: 0 auto;
   padding: 0 40px max(20px, env(safe-area-inset-bottom));
+  transition: opacity 160ms ease, visibility 160ms ease;
+}
+
+body:has(.expanded-modal-mode) .site-footer {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .site-footer-inner {
@@ -685,7 +691,7 @@ button:disabled {
   inset: 0;
   background-color: rgba(9, 9, 11, 0.86);
   backdrop-filter: blur(10px);
-  z-index: 9000;
+  z-index: 9998;
 }
 
 .page-container-super.expanded-modal-mode {
@@ -693,7 +699,7 @@ button:disabled {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  z-index: 9010;
+  z-index: 9999;
   width: calc(var(--modal-stage-w, 496px) + 44px);
   max-width: 96vw;
   max-height: 96vh;

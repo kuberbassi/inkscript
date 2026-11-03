@@ -520,7 +520,11 @@ export const App: React.FC = () => {
         />
       </main>
 
-      <footer className="site-footer">
+      <footer
+        className={`site-footer ${
+          isExpandedEditor ? 'pointer-events-none opacity-0 invisible' : ''
+        }`}
+      >
         <div className="site-footer-inner">
           <a
             className="footer-signature"
