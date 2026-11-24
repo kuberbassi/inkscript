@@ -30,8 +30,8 @@ export const SHEET_GEOMETRY = {
 
 export const STENCIL_COLORS = {
   PAPER_BG: '#ffffff',
-  RULED_LINE: '#999999',
-  MARGIN_LINE: '#f472b6',
+  RULED_LINE: '#aeb6c2',
+  MARGIN_LINE: '#e27d93',
   DONE_GREEN: '#22c55e',
   ERROR_RED: '#ef4444'
 } as const;

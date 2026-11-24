@@ -12,6 +12,51 @@ import {
 const PAGE_WIDTH = SHEET_GEOMETRY.WIDTH_PX;
 const PAGE_HEIGHT = SHEET_GEOMETRY.HEIGHT_PX;
 
+interface RGBColor {
+  r: number;
+  g: number;
+  b: number;
+}
+
+function parseHexColor(hex: string): RGBColor | null {
+  const clean = hex.trim().replace(/^#/, '');
+  if (clean.length === 3) {
+    return {
+      r: parseInt(clean[0] + clean[0], 16),
+      g: parseInt(clean[1] + clean[1], 16),
+      b: parseInt(clean[2] + clean[2], 16)
+    };
+  }
+  if (clean.length === 6) {
+    return {
+      r: parseInt(clean.slice(0, 2), 16),
+      g: parseInt(clean.slice(2, 4), 16),
+      b: parseInt(clean.slice(4, 6), 16)
+    };
+  }
+  return null;
+}
+
+/**
+ * Produces subtle ballpoint/gel ink tonal shifts (brighter cobalt on light glides,
+ * deeper indigo on firm downstrokes) so color inkjet prints look like real pen ink
+ * rather than a flat uniform digital hex fill.
+ */
+function getTonalInkColor(
+  baseRgb: RGBColor | null,
+  fallbackHex: string,
+  opacity: number,
+  realismEff: number
+): string {
+  if (!baseRgb || realismEff <= 0) return fallbackHex;
+  // Center around normal opacity (~0.87): lower opacity -> slightly brighter/airier; higher -> richer/deeper
+  const delta = Math.round((0.87 - opacity) * 95 * Math.min(1.2, realismEff));
+  const r = Math.max(0, Math.min(255, baseRgb.r + delta));
+  const g = Math.max(0, Math.min(255, baseRgb.g + Math.round(delta * 1.05)));
+  const b = Math.max(0, Math.min(255, baseRgb.b + Math.round(delta * 1.15)));
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
 let cachedInkGrainCanvas: HTMLCanvasElement | null = null;
 
 /**
@@ -315,11 +360,11 @@ export async function renderCurrentSheetToCanvas(
   const paperRect = paperContentEl.getBoundingClientRect();
   const paperTopInPage = (paperRect.top - pageRect.top) * scaleFactorY;
 
-  // 2. Crisp Vector Ruled Horizontal Lines (locked to paperContentEl's exact DOM origin)
+  // 2. Delicate Notebook-Accurate Vector Ruled Horizontal Lines (optimized for inkjet print)
   if (settings.showRuledLines && !settings.customPaperBgUrl) {
     ctx.save();
     ctx.strokeStyle = STENCIL_COLORS.RULED_LINE;
-    ctx.lineWidth = 1.0;
+    ctx.lineWidth = 0.72;
     let lineY = paperTopInPage + lineGap - 0.6;
     while (lineY < -2) {
       lineY += lineGap;
@@ -336,11 +381,11 @@ export async function renderCurrentSheetToCanvas(
     ctx.restore();
   }
 
-  // 3. Independent Vector Top Margin & Full-Height Left Margin Lines
+  // 3. Independent Vector Top Margin & Full-Height Left Margin Lines (soft notebook rose)
   if (!settings.customPaperBgUrl) {
     ctx.save();
     ctx.strokeStyle = STENCIL_COLORS.MARGIN_LINE;
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 1.05;
 
     if (settings.showTopMargin) {
       const topLineY = paperTopInPage;
@@ -397,8 +442,15 @@ export async function renderCurrentSheetToCanvas(
 
   const eff = Math.min(2.0, settings.realismIntensity * 0.82);
   const decoRng = new SeededRandom(pageSeed + 7919);
+  const baseInkRgb = parseHexColor(settings.inkColor);
 
-  // 5. Render Clean Single-Pass Hand-Drawn Table Grid Lines (Zero Double-Borders)
+  const snapYToRuledLine = (yVal: number): number => {
+    if (!settings.showRuledLines || settings.customPaperBgUrl) return yVal;
+    const k = Math.round((yVal - (paperTopInPage - 0.6)) / lineGap);
+    return paperTopInPage + k * lineGap - 0.6;
+  };
+
+  // 5. Render Clean Single-Pass Hand-Drawn Table Grid Lines Snapped to Notebook Ruled Lines
   const tables = Array.from(
     paperContentEl.querySelectorAll('table.hw-table, table')
   );
@@ -411,14 +463,14 @@ export async function renderCurrentSheetToCanvas(
 
     if (ty + th > 0 && ty < PAGE_HEIGHT && tw > 0 && th > 0) {
       const xSet: number[] = [tx, tx + tw];
-      const ySet: number[] = [ty, ty + th];
+      const ySet: number[] = [snapYToRuledLine(ty), snapYToRuledLine(ty + th)];
       let headerBottomY: number | null = null;
 
       const rows = Array.from(tableEl.querySelectorAll('tr'));
       rows.forEach((tr, rIdx) => {
         const rRect = tr.getBoundingClientRect();
-        const ryTop = (rRect.top - pageRect.top) * scaleFactorY;
-        const ryBot = (rRect.bottom - pageRect.top) * scaleFactorY;
+        const ryTop = snapYToRuledLine((rRect.top - pageRect.top) * scaleFactorY);
+        const ryBot = snapYToRuledLine((rRect.bottom - pageRect.top) * scaleFactorY);
         ySet.push(ryTop, ryBot);
         if (rIdx === 0 && tr.querySelector('th')) {
           headerBottomY = ryBot;
@@ -433,7 +485,7 @@ export async function renderCurrentSheetToCanvas(
         });
       });
 
-      const dedupeCoords = (vals: number[], eps = 1.6): number[] => {
+      const dedupeCoords = (vals: number[], eps = 2.0): number[] => {
         const sorted = [...vals].sort((a, b) => a - b);
         const out: number[] = [];
         for (const v of sorted) {
@@ -446,29 +498,40 @@ export async function renderCurrentSheetToCanvas(
 
       const uniqueXs = dedupeCoords(xSet);
       const uniqueYs = dedupeCoords(ySet);
-      const wobble = 0.42 * eff;
+      const snappedTopY = uniqueYs[0] ?? ty;
+      const snappedBotY = uniqueYs[uniqueYs.length - 1] ?? ty + th;
+      const wobble = 0.36 * eff;
 
       inkCtx.save();
       inkCtx.strokeStyle = settings.inkColor;
       inkCtx.lineCap = 'round';
       inkCtx.lineJoin = 'round';
 
-      // Horizontal lines
+      // Horizontal lines (traced cleanly right along the notebook ruled lines)
       uniqueYs.forEach((ly, idx) => {
         const isOuter = idx === 0 || idx === uniqueYs.length - 1;
         const isHeaderSep =
-          headerBottomY !== null && Math.abs(ly - headerBottomY) < 2;
-        inkCtx.lineWidth = isHeaderSep ? 1.15 : isOuter ? 1.05 : 0.85;
-        inkCtx.globalAlpha = isOuter || isHeaderSep ? 0.62 : 0.46;
-        strokeHandDrawnLine(inkCtx, tx, ly, tx + tw, ly, decoRng, wobble, 26);
+          headerBottomY !== null && Math.abs(ly - headerBottomY) < 2.5;
+        inkCtx.lineWidth = isHeaderSep ? 1.05 : isOuter ? 0.95 : 0.78;
+        inkCtx.globalAlpha = isOuter || isHeaderSep ? 0.68 : 0.5;
+        strokeHandDrawnLine(inkCtx, tx, ly, tx + tw, ly, decoRng, wobble, 28);
       });
 
-      // Vertical lines
+      // Vertical lines (connecting snappedTopY to snappedBotY cleanly at corners)
       uniqueXs.forEach((lx, idx) => {
         const isOuter = idx === 0 || idx === uniqueXs.length - 1;
-        inkCtx.lineWidth = isOuter ? 1.05 : 0.85;
-        inkCtx.globalAlpha = isOuter ? 0.62 : 0.46;
-        strokeHandDrawnLine(inkCtx, lx, ty, lx, ty + th, decoRng, wobble, 24);
+        inkCtx.lineWidth = isOuter ? 0.95 : 0.8;
+        inkCtx.globalAlpha = isOuter ? 0.68 : 0.52;
+        strokeHandDrawnLine(
+          inkCtx,
+          lx,
+          snappedTopY,
+          lx,
+          snappedBotY,
+          decoRng,
+          wobble,
+          26
+        );
       });
 
       inkCtx.restore();
@@ -632,10 +695,17 @@ export async function renderCurrentSheetToCanvas(
                 }
               );
 
+            const sylInkColor = getTonalInkColor(
+              baseInkRgb,
+              settings.inkColor,
+              sylData.opacity,
+              eff
+            );
+
             if (usedVectorPath) {
               // 1. Subtle pen pressure stroke (if bold or firm pressure)
               if (sylData.strokeWidth > 0) {
-                inkCtx.strokeStyle = settings.inkColor;
+                inkCtx.strokeStyle = sylInkColor;
                 inkCtx.lineWidth = sylData.strokeWidth;
                 inkCtx.lineJoin = 'round';
                 inkCtx.lineCap = 'round';
@@ -644,14 +714,14 @@ export async function renderCurrentSheetToCanvas(
               }
 
               // 2. Main perturbed vector ink fill
-              inkCtx.fillStyle = settings.inkColor;
+              inkCtx.fillStyle = sylInkColor;
               inkCtx.globalAlpha = sylData.opacity;
               inkCtx.fill();
             } else {
               // Graceful Canvas 2D fallback (e.g., Devanagari, emojis, or offline font)
               if (sylData.strokeWidth > 0) {
                 inkCtx.save();
-                inkCtx.strokeStyle = settings.inkColor;
+                inkCtx.strokeStyle = sylInkColor;
                 inkCtx.lineWidth = sylData.strokeWidth;
                 inkCtx.lineJoin = 'round';
                 inkCtx.lineCap = 'round';
@@ -662,7 +732,7 @@ export async function renderCurrentSheetToCanvas(
 
               if (sylData.shadowAlpha > 0) {
                 inkCtx.save();
-                inkCtx.fillStyle = settings.inkColor;
+                inkCtx.fillStyle = sylInkColor;
                 inkCtx.globalAlpha = sylData.shadowAlpha;
                 inkCtx.fillText(
                   syl,
@@ -672,7 +742,7 @@ export async function renderCurrentSheetToCanvas(
                 inkCtx.restore();
               }
 
-              inkCtx.fillStyle = settings.inkColor;
+              inkCtx.fillStyle = sylInkColor;
               inkCtx.globalAlpha = sylData.opacity;
               inkCtx.fillText(syl, curX, sylBaselineY);
             }
