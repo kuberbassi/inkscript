@@ -211,6 +211,31 @@ export interface SheetRenderOptions {
 }
 
 /**
+ * Snaps every table and embedded image inside paperContentEl so its total occupied height
+ * (height + marginBottom) is an exact integer multiple of lineGapPx.
+ * Prevents cumulative vertical baseline drift on ruled sheets as you scroll past tables/images.
+ */
+export function snapBlocksToRuledGrid(
+  paperContentEl: HTMLElement,
+  lineGapPx: number,
+  scaleFactorY = 1
+): void {
+  if (!lineGapPx || lineGapPx < 8) return;
+  const gridBlocks = Array.from(
+    paperContentEl.querySelectorAll<HTMLElement>('table.hw-table, table, img')
+  );
+  for (const el of gridBlocks) {
+    el.style.marginBottom = '0px';
+    const rawH = el.getBoundingClientRect().height * scaleFactorY;
+    if (rawH <= 0) continue;
+    const rem = rawH % lineGapPx;
+    if (rem > 0.35 && rem < lineGapPx - 0.35) {
+      el.style.marginBottom = `${(lineGapPx - rem).toFixed(2)}px`;
+    }
+  }
+}
+
+/**
  * Direct HTML5 Canvas 2D Vector Page Renderer (Tier 1 + Tier 2 opentype.js)
  * Renders ruled lines, independent margins, grid-locked hand-drawn tables,
  * Bezier-perturbed vector glyphs, hand-drawn underlines, and organic ink grain.
@@ -270,9 +295,6 @@ export async function renderCurrentSheetToCanvas(
     }
   }
 
-  const topMarginOffset = settings.showTopMargin
-    ? SHEET_GEOMETRY.TOP_MARGIN_HEIGHT_PX
-    : 0;
   const lineGap = Math.max(
     SHEET_GEOMETRY.MIN_LINE_GAP_PX,
     Math.round(settings.lineGapPx || exactLineHeightPx)
@@ -283,17 +305,27 @@ export async function renderCurrentSheetToCanvas(
       SHEET_GEOMETRY.LEFT_MARGIN_LINE_OFFSET_PX
   );
 
-  // 2. Crisp Vector Ruled Horizontal Lines (synced with scrollTop for live preview)
+  const pageRect = pageEl.getBoundingClientRect();
+  const scaleFactorX = pageRect.width > 0 ? PAGE_WIDTH / pageRect.width : 1;
+  const scaleFactorY = pageRect.height > 0 ? PAGE_HEIGHT / pageRect.height : 1;
+
+  // Snap tables & images to exact multiples of lineGap so lines never drift downward
+  snapBlocksToRuledGrid(paperContentEl, lineGap, scaleFactorY);
+
+  const paperRect = paperContentEl.getBoundingClientRect();
+  const paperTopInPage = (paperRect.top - pageRect.top) * scaleFactorY;
+
+  // 2. Crisp Vector Ruled Horizontal Lines (locked to paperContentEl's exact DOM origin)
   if (settings.showRuledLines && !settings.customPaperBgUrl) {
     ctx.save();
     ctx.strokeStyle = STENCIL_COLORS.RULED_LINE;
     ctx.lineWidth = 1.0;
-    let lineY = topMarginOffset + lineGap - 0.6 - scrollTop;
+    let lineY = paperTopInPage + lineGap - 0.6;
     while (lineY < -2) {
       lineY += lineGap;
     }
     while (lineY < PAGE_HEIGHT - 1) {
-      if (lineY >= topMarginOffset - scrollTop) {
+      if (lineY >= paperTopInPage - 1) {
         ctx.beginPath();
         ctx.moveTo(0, lineY);
         ctx.lineTo(PAGE_WIDTH, lineY);
@@ -311,7 +343,7 @@ export async function renderCurrentSheetToCanvas(
     ctx.lineWidth = 1.5;
 
     if (settings.showTopMargin) {
-      const topLineY = SHEET_GEOMETRY.TOP_MARGIN_HEIGHT_PX - scrollTop;
+      const topLineY = paperTopInPage;
       if (topLineY > 0 && topLineY < PAGE_HEIGHT) {
         ctx.beginPath();
         ctx.moveTo(0, topLineY);
@@ -331,10 +363,6 @@ export async function renderCurrentSheetToCanvas(
   }
 
   // 4. Render Embedded Diagrams / Sketches (<img> inside paperContentEl)
-  const pageRect = pageEl.getBoundingClientRect();
-  const scaleFactorX = pageRect.width > 0 ? PAGE_WIDTH / pageRect.width : 1;
-  const scaleFactorY = pageRect.height > 0 ? PAGE_HEIGHT / pageRect.height : 1;
-
   const imgElements = Array.from(paperContentEl.querySelectorAll('img'));
   for (const imgEl of imgElements) {
     if (imgEl.src) {

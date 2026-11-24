@@ -16,7 +16,8 @@ import {
 } from './constants/studioTokens';
 import {
   generateHandwrittenPages,
-  renderCurrentSheetToCanvas
+  renderCurrentSheetToCanvas,
+  snapBlocksToRuledGrid
 } from './engine/canvasRenderer';
 import {
   htmlToMarkdown,
@@ -119,6 +120,17 @@ export const App: React.FC = () => {
     setIsTypingActive(false);
     setPreviewTick((t) => t + 1);
   }, []);
+
+  // Keep tables & images snapped to ruled grid even when Realism is Off or while typing
+  useEffect(() => {
+    const pageEl = pageElRef.current;
+    const paperEl = paperContentRef.current;
+    if (!pageEl || !paperEl) return;
+    const pageRect = pageEl.getBoundingClientRect();
+    const scaleFactorY =
+      pageRect.height > 0 ? SHEET_GEOMETRY.HEIGHT_PX / pageRect.height : 1;
+    snapBlocksToRuledGrid(paperEl, exactLineHeightPx, scaleFactorY);
+  }, [exactLineHeightPx, settings.fontSizePt, settings.leftPaddingPx, previewTick, isExpandedEditor]);
 
   // Render Live Realism Preview Overlay (Tier 1 + Tier 2 vector engine directly in Sheet Canvas)
   useEffect(() => {
