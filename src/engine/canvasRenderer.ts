@@ -1058,6 +1058,12 @@ export async function renderCurrentSheetToCanvas(
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.globalCompositeOperation = 'multiply';
+    // Ultra-subtle pen-indentation paper depth (deboss micro-shadow, zero stroke fattening)
+    const debossAlpha = (0.09 * Math.min(1.15, eff)).toFixed(3);
+    ctx.shadowColor = `rgba(20, 26, 42, ${debossAlpha})`;
+    ctx.shadowBlur = 0.55 * scale;
+    ctx.shadowOffsetX = 0.24 * scale;
+    ctx.shadowOffsetY = 0.32 * scale;
     ctx.drawImage(inkCanvas, 0, 0);
     ctx.restore();
   }
