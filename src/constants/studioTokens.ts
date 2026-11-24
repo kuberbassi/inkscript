@@ -86,26 +86,20 @@ export function getAuroraStopsForInk(inkColor: string): [string, string, string]
 
 export const HANDWRITING_FONTS: FontOption[] = [
   {
-    label: 'Cedarville Cursive (Casual Loose)',
+    label: 'Cedarville Cursive (Casual Cursive)',
     shortLabel: 'Cedarville Cursive',
     value: "'Cedarville Cursive', cursive",
     previewFont: "'Cedarville Cursive', cursive"
   },
   {
-    label: 'Cedarville Cursive (Ornate Spencerian / Formal)',
-    shortLabel: 'Cedarville Formal',
-    value: "'Cedarville Classic', cursive",
-    previewFont: "'Cedarville Classic', cursive"
+    label: 'Caveat (Everyday Pen)',
+    shortLabel: 'Caveat Pen',
+    value: "'Caveat', cursive",
+    previewFont: "'Caveat', cursive"
   },
   {
-    label: 'Patrick Hand (Student Print)',
-    shortLabel: 'Patrick Hand',
-    value: "'Patrick Hand', cursive",
-    previewFont: "'Patrick Hand', cursive"
-  },
-  {
-    label: 'Kalam (Pen Handwriting)',
-    shortLabel: 'Kalam Pen',
+    label: 'Kalam (Ballpoint · EN + Hindi)',
+    shortLabel: 'Kalam (EN + Hindi)',
     value: "'Kalam', cursive",
     previewFont: "'Kalam', cursive"
   },
@@ -116,28 +110,10 @@ export const HANDWRITING_FONTS: FontOption[] = [
     previewFont: "'Homemade Apple', cursive"
   },
   {
-    label: 'Caveat (Casual Pen)',
-    shortLabel: 'Caveat Pen',
-    value: "'Caveat', cursive",
-    previewFont: "'Caveat', cursive"
-  },
-  {
-    label: 'Shadows Into Light (Clean Script)',
+    label: 'Shadows Into Light (Neat Print)',
     shortLabel: 'Shadows Into Light',
     value: "'Shadows Into Light', cursive",
     previewFont: "'Shadows Into Light', cursive"
-  },
-  {
-    label: 'Liu Jian Mao Cao (Brush Pen)',
-    shortLabel: 'Liu Jian Mao Cao',
-    value: "'Liu Jian Mao Cao', cursive",
-    previewFont: "'Liu Jian Mao Cao', cursive"
-  },
-  {
-    label: 'Noto Sans Devanagari (Unicode Hindi)',
-    shortLabel: 'Unicode Hindi',
-    value: "'Noto Sans Devanagari', 'Nirmala UI', sans-serif",
-    previewFont: "'Noto Sans Devanagari', 'Nirmala UI', sans-serif"
   }
 ];
 

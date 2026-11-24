@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   DEFAULT_SETTINGS,
+  HANDWRITING_FONTS,
   SHEET_GEOMETRY,
   STORAGE_KEYS
 } from '../constants/studioTokens';
@@ -14,9 +15,14 @@ export function useStudioState() {
       if (saved) {
         const parsed = JSON.parse(saved);
         const fallbackMargin = parsed.showMarginLine ?? true;
+        const validFonts = new Set(HANDWRITING_FONTS.map((f) => f.value));
+        const safeFont = validFonts.has(parsed.handwritingFont)
+          ? parsed.handwritingFont
+          : DEFAULT_SETTINGS.handwritingFont;
         return {
           ...DEFAULT_SETTINGS,
           ...parsed,
+          handwritingFont: safeFont,
           showTopMargin: parsed.showTopMargin ?? fallbackMargin,
           showLeftMargin: parsed.showLeftMargin ?? fallbackMargin,
           lineGapPx: parsed.lineGapPx ?? DEFAULT_SETTINGS.lineGapPx,
@@ -71,13 +77,24 @@ export function useStudioState() {
     );
   }, [settings.lineGapPx]);
 
-  // Smart baseline compensation so glyphs sit squarely on ruled lines at any font size
+  // Exact baseline compensation so glyphs sit squarely on ruled lines at ANY lineGapPx (14-42px) & fontSizePt
   const smartBaselineOffsetPx = useMemo(() => {
     const fontSizePx = (settings.fontSizePt * 4) / 3;
-    const naturalGap = fontSizePx * 1.43;
-    const diff = exactLineHeightPx - naturalGap;
-    return Math.max(0, Math.round(settings.topPaddingPx + diff * 0.18));
-  }, [settings.fontSizePt, exactLineHeightPx, settings.topPaddingPx]);
+    // Inside a CSS line box of height L, alphabetic baseline sits near L/2 + 0.275*F.
+    // Shift down so the baseline lands ~2.4px above the bottom ruled line of every row.
+    const autoOffset = settings.showRuledLines
+      ? Math.max(
+          0,
+          Math.round((exactLineHeightPx * 0.5 - fontSizePx * 0.275 - 2.4) * 2) / 2
+        )
+      : 0;
+    return Number((settings.topPaddingPx + autoOffset).toFixed(2));
+  }, [
+    settings.fontSizePt,
+    exactLineHeightPx,
+    settings.topPaddingPx,
+    settings.showRuledLines
+  ]);
 
   // Synchronize CSS custom properties for the Live Sheet Preview
   useEffect(() => {
