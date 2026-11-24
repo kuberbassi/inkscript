@@ -155,7 +155,10 @@ export const App: React.FC = () => {
       }
       if (cancelled || seq !== previewRenderSeqRef.current) return;
 
-      const dpr = Math.min(window.devicePixelRatio || 1.5, 2);
+      const dpr = window.devicePixelRatio || 1;
+      const previewScale = isExpandedEditor
+        ? Math.min(4.5, Math.max(3.5, dpr * expandedScale * 2.2))
+        : Math.min(3.5, Math.max(2.5, dpr * 2));
       await renderCurrentSheetToCanvas(
         pageEl,
         paperEl,
@@ -163,7 +166,7 @@ export const App: React.FC = () => {
         exactLineHeightPx,
         settings.realismSeed,
         {
-          scaleOverride: dpr,
+          scaleOverride: previewScale,
           scrollTop: pageEl.scrollTop,
           targetCanvas: canvasEl
         }
@@ -188,6 +191,7 @@ export const App: React.FC = () => {
     isGenerating,
     isTypingActive,
     isExpandedEditor,
+    expandedScale,
     previewTick
   ]);
 

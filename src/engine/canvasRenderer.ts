@@ -246,6 +246,96 @@ function strokeHandDrawnLine(
   ctx.stroke();
 }
 
+/**
+ * Draws a natural hand-sketched 5-point star (★) or right arrow (→) with organic pen wobble
+ * so toolbar symbols blend seamlessly with cursive handwriting instead of looking like crisp computer icons.
+ */
+function drawHandDrawnSymbol(
+  ctx: CanvasRenderingContext2D,
+  symbol: string,
+  x: number,
+  baselineY: number,
+  fontSizePx: number,
+  inkColor: string,
+  opacity: number,
+  rng: SeededRandom,
+  eff: number
+): boolean {
+  if (symbol !== '★' && symbol !== '→') return false;
+
+  ctx.save();
+  ctx.strokeStyle = inkColor;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.globalAlpha = opacity;
+
+  if (symbol === '→') {
+    const len = fontSizePx * 0.92;
+    const midY = baselineY - fontSizePx * 0.28;
+    const tilt = rng.uniform(-0.8, 0.8) * eff;
+    const x1 = x + fontSizePx * 0.06;
+    const x2 = x1 + len;
+    const y1 = midY + tilt * 0.5;
+    const y2 = midY - tilt * 0.5;
+    const headLen = fontSizePx * 0.34;
+    const headSpread = fontSizePx * 0.24;
+
+    ctx.lineWidth = Math.max(0.85, fontSizePx * 0.068);
+    // Slightly curved hand-drawn shaft
+    strokeHandDrawnLine(ctx, x1, y1, x2, y2, rng, 0.48 * eff, 6);
+    // Upper arrowhead stroke (slightly asymmetric like real handwriting)
+    strokeHandDrawnLine(
+      ctx,
+      x2 - headLen + rng.uniform(-0.7, 0.7) * eff,
+      y2 - headSpread + rng.uniform(-0.6, 0.6) * eff,
+      x2 + rng.uniform(-0.3, 0.5) * eff,
+      y2 + rng.uniform(-0.3, 0.3) * eff,
+      rng,
+      0.32 * eff,
+      5
+    );
+    // Lower arrowhead stroke
+    strokeHandDrawnLine(
+      ctx,
+      x2 - headLen * 0.94 + rng.uniform(-0.7, 0.7) * eff,
+      y2 + headSpread + rng.uniform(-0.6, 0.6) * eff,
+      x2 + rng.uniform(-0.3, 0.5) * eff,
+      y2 + rng.uniform(-0.3, 0.3) * eff,
+      rng,
+      0.32 * eff,
+      5
+    );
+    ctx.restore();
+    return true;
+  }
+
+  // Hand-drawn 5-point sketched star (★) drawn as a continuous 5-stroke star like a student's pen
+  const cx = x + fontSizePx * 0.42;
+  const cy = baselineY - fontSizePx * 0.34;
+  const r = fontSizePx * 0.39;
+  const rotJitter = rng.uniform(-0.14, 0.14) * eff;
+
+  // Star vertices in drawing order: top -> bottom-right -> upper-left -> upper-right -> bottom-left -> top
+  const order = [0, 2, 4, 1, 3, 0];
+  const pts = [0, 1, 2, 3, 4].map((i) => {
+    const angle = -Math.PI / 2 + rotJitter + (i * 2 * Math.PI) / 5;
+    const rad = r * (1 + rng.uniform(-0.11, 0.11) * eff);
+    return {
+      x: cx + Math.cos(angle) * rad,
+      y: cy + Math.sin(angle) * rad
+    };
+  });
+
+  ctx.lineWidth = Math.max(0.82, fontSizePx * 0.064);
+  for (let i = 0; i < order.length - 1; i++) {
+    const a = pts[order[i]];
+    const b = pts[order[i + 1]];
+    strokeHandDrawnLine(ctx, a.x, a.y, b.x, b.y, rng, 0.35 * eff, 6);
+  }
+  ctx.restore();
+  return true;
+}
+
 export interface SheetRenderOptions {
   /** Override export scale (e.g., 1.5-2 for fast live preview overlay) */
   scaleOverride?: number;
@@ -452,7 +542,47 @@ export async function renderCurrentSheetToCanvas(
     return paperTopInPage + rowIdx * lineGap - 0.6;
   };
 
-  // 5. Render Clean Single-Pass Hand-Drawn Table Grid Lines Snapped to Notebook Ruled Lines
+  const fontSizePx = (settings.fontSizePt * 4) / 3;
+  const letterSpacingPx = (settings.letterSpacingPt * 4) / 3;
+
+  // Helper to measure the actual rendered text baseline range [minBaseY, maxBaseY] inside a table row
+  const measureRowTextBaselines = (
+    trEl: Element
+  ): { minBaseY: number; maxBaseY: number } | null => {
+    inkCtx.font = `normal 400 ${fontSizePx.toFixed(2)}px ${fontFamily}`;
+    const sampleMetrics = inkCtx.measureText('Ag');
+    const fallbackAscent =
+      sampleMetrics.fontBoundingBoxAscent !== undefined &&
+      sampleMetrics.fontBoundingBoxAscent > 0
+        ? sampleMetrics.fontBoundingBoxAscent
+        : fontSizePx * 0.85;
+
+    let minBase = Infinity;
+    let maxBase = -Infinity;
+    const rowWalker = document.createTreeWalker(trEl, NodeFilter.SHOW_TEXT, null);
+    const rowRange = document.createRange();
+    let tn = rowWalker.nextNode() as Text | null;
+    while (tn) {
+      const txt = tn.nodeValue || '';
+      const wordRe = /\S+/g;
+      let m: RegExpExecArray | null;
+      while ((m = wordRe.exec(txt)) !== null) {
+        rowRange.setStart(tn, m.index);
+        rowRange.setEnd(tn, m.index + m[0].length);
+        const r = rowRange.getBoundingClientRect();
+        if (r.width < 0.5 || r.height < 0.5) continue;
+        const topY = (r.top - pageRect.top) * scaleFactorY;
+        const baseY = topY + fallbackAscent;
+        if (baseY < minBase) minBase = baseY;
+        if (baseY > maxBase) maxBase = baseY;
+      }
+      tn = rowWalker.nextNode() as Text | null;
+    }
+    if (!Number.isFinite(minBase) || !Number.isFinite(maxBase)) return null;
+    return { minBaseY: minBase, maxBaseY: maxBase };
+  };
+
+  // 5. Render Clean Single-Pass Hand-Drawn Table Grid Lines Anchored to Actual Row Text Baselines
   const tables = Array.from(
     paperContentEl.querySelectorAll('table.hw-table, table')
   );
@@ -463,17 +593,36 @@ export async function renderCurrentSheetToCanvas(
     const tw = tRect.width * scaleFactorX;
     const th = tRect.height * scaleFactorY;
 
-    if (ty + th > 0 && ty < PAGE_HEIGHT && tw > 0 && th > 0) {
+    if (ty + th > -lineGap && ty < PAGE_HEIGHT + lineGap && tw > 0 && th > 0) {
       const xSet: number[] = [tx, tx + tw];
-      const ySet: number[] = [snapYToRuledLine(ty), snapYToRuledLine(ty + th)];
+      const ySet: number[] = [];
       let headerBottomY: number | null = null;
 
       const rows = Array.from(tableEl.querySelectorAll('tr'));
       rows.forEach((tr, rIdx) => {
         const rRect = tr.getBoundingClientRect();
-        const ryTop = snapYToRuledLine((rRect.top - pageRect.top) * scaleFactorY);
-        const ryBot = snapYToRuledLine((rRect.bottom - pageRect.top) * scaleFactorY);
-        ySet.push(ryTop, ryBot);
+        const baselines = measureRowTextBaselines(tr);
+
+        let ryTop: number;
+        let ryBot: number;
+
+        if (baselines && settings.showRuledLines && !settings.customPaperBgUrl) {
+          // Snap top border to the ruled line strictly ABOVE the row's first text baseline,
+          // and bottom border to the ruled line that the row's last text baseline sits ON.
+          const firstLineY = snapYToRuledLine(baselines.minBaseY);
+          const lastLineY = snapYToRuledLine(baselines.maxBaseY);
+          ryTop = firstLineY - lineGap;
+          ryBot = Math.max(lastLineY, firstLineY);
+        } else {
+          ryTop = snapYToRuledLine((rRect.top - pageRect.top) * scaleFactorY);
+          ryBot = snapYToRuledLine((rRect.bottom - pageRect.top) * scaleFactorY);
+        }
+
+        if (rIdx === 0) {
+          ySet.push(ryTop);
+        }
+        ySet.push(ryBot);
+
         if (rIdx === 0 && tr.querySelector('th')) {
           headerBottomY = ryBot;
         }
@@ -541,8 +690,6 @@ export async function renderCurrentSheetToCanvas(
   }
 
   // 6. Render All Handwritten Text Words (Tier 1 + Tier 2 Vector Perturbation)
-  const fontSizePx = (settings.fontSizePt * 4) / 3;
-  const letterSpacingPx = (settings.letterSpacingPt * 4) / 3;
 
   interface DecorationSegment {
     startX: number;
@@ -729,7 +876,24 @@ export async function renderCurrentSheetToCanvas(
               eff
             );
 
-            if (usedVectorPath) {
+            // Hand-drawn custom pen strokes for ★ and → so they never look like crisp computer icons
+            const drewCustomSymbol =
+              settings.realismIntensity > 0 &&
+              drawHandDrawnSymbol(
+                inkCtx,
+                syl,
+                curX,
+                sylBaselineY,
+                fontSizePx,
+                sylInkColor,
+                sylData.opacity,
+                decoRng,
+                eff
+              );
+
+            if (drewCustomSymbol) {
+              // Already drawn as organic hand-sketched symbol
+            } else if (usedVectorPath) {
               // 1. Subtle pen pressure stroke (if bold or firm pressure)
               if (sylData.strokeWidth > 0) {
                 inkCtx.strokeStyle = sylInkColor;
