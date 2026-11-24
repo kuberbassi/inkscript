@@ -20,7 +20,6 @@ interface ToolItem {
 
 const TOOL_GROUPS: ToolItem[][] = [
   [
-    { id: 'bold', label: 'Bold', icon: 'ph ph-text-b', shortcut: '⌘B', action: { type: 'cmd', cmd: 'bold' } },
     { id: 'italic', label: 'Italic', icon: 'ph ph-text-italic', shortcut: '⌘I', action: { type: 'cmd', cmd: 'italic' } },
     { id: 'underline', label: 'Underline', icon: 'ph ph-text-underline', shortcut: '⌘U', action: { type: 'cmd', cmd: 'underline' } },
     { id: 'strike', label: 'Strikethrough', icon: 'ph ph-text-strikethrough', shortcut: '⌘⇧X', action: { type: 'cmd', cmd: 'strikeThrough' } }
@@ -28,8 +27,7 @@ const TOOL_GROUPS: ToolItem[][] = [
   [
     { id: 'align-left', label: 'Align Left', icon: 'ph ph-text-align-left', action: { type: 'cmd', cmd: 'justifyLeft' } },
     { id: 'align-center', label: 'Align Center', icon: 'ph ph-text-align-center', action: { type: 'cmd', cmd: 'justifyCenter' } },
-    { id: 'align-right', label: 'Align Right', icon: 'ph ph-text-align-right', action: { type: 'cmd', cmd: 'justifyRight' } },
-    { id: 'align-justify', label: 'Justify Full', icon: 'ph ph-text-align-justify', action: { type: 'cmd', cmd: 'justifyFull' } }
+    { id: 'align-right', label: 'Align Right', icon: 'ph ph-text-align-right', action: { type: 'cmd', cmd: 'justifyRight' } }
   ],
   [
     { id: 'bullet-list', label: 'Bullet List', icon: 'ph ph-list-bullets', shortcut: '•', action: { type: 'cmd', cmd: 'insertUnorderedList' } },

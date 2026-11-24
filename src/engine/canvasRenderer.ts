@@ -443,11 +443,13 @@ export async function renderCurrentSheetToCanvas(
   const eff = Math.min(2.0, settings.realismIntensity * 0.82);
   const decoRng = new SeededRandom(pageSeed + 7919);
   const baseInkRgb = parseHexColor(settings.inkColor);
+  const contentPadTop =
+    parseFloat(window.getComputedStyle(paperContentEl).paddingTop || '0') || 0;
 
   const snapYToRuledLine = (yVal: number): number => {
     if (!settings.showRuledLines || settings.customPaperBgUrl) return yVal;
-    const k = Math.round((yVal - (paperTopInPage - 0.6)) / lineGap);
-    return paperTopInPage + k * lineGap - 0.6;
+    const rowIdx = Math.round((yVal - paperTopInPage - contentPadTop) / lineGap);
+    return paperTopInPage + rowIdx * lineGap - 0.6;
   };
 
   // 5. Render Clean Single-Pass Hand-Drawn Table Grid Lines Snapped to Notebook Ruled Lines
@@ -563,6 +565,31 @@ export async function renderCurrentSheetToCanvas(
   );
 
   const range = document.createRange();
+
+  // Render CSS list markers (<li> inside <ul>/<ol>) so toolbar list buttons show live in overlay
+  const listItems = Array.from(paperContentEl.querySelectorAll('li'));
+  if (listItems.length > 0) {
+    inkCtx.save();
+    inkCtx.font = `normal 400 ${fontSizePx.toFixed(2)}px ${fontFamily}`;
+    inkCtx.textBaseline = 'alphabetic';
+    inkCtx.fillStyle = settings.inkColor;
+    inkCtx.globalAlpha = 0.88;
+    for (const li of listItems) {
+      const parentList = li.parentElement;
+      if (!parentList) continue;
+      const isOrdered = parentList.tagName.toLowerCase() === 'ol';
+      const idx = Array.from(parentList.children).indexOf(li) + 1;
+      const marker = isOrdered ? `${idx}.` : '•';
+      const liRect = li.getBoundingClientRect();
+      const mx = (liRect.left - pageRect.left) * scaleFactorX - (isOrdered ? 14 : 11);
+      const my = (liRect.top - pageRect.top) * scaleFactorY + fontSizePx * 0.92;
+      if (my > -12 && my < PAGE_HEIGHT + 12) {
+        inkCtx.fillText(marker, mx, my);
+      }
+    }
+    inkCtx.restore();
+  }
+
   let textNode = walker.nextNode() as Text | null;
 
   while (textNode) {
@@ -942,9 +969,26 @@ export async function generateHandwrittenPages(
     paperContentEl.style.alignSelf = 'flex-start';
     paperContentEl.style.paddingBottom = '6px';
 
-    const maxPageHeight = settings.showTopMargin
-      ? SHEET_GEOMETRY.MAX_CONTENT_HEIGHT_WITH_TOP_MARGIN
-      : SHEET_GEOMETRY.MAX_CONTENT_HEIGHT_WITHOUT_TOP_MARGIN;
+    // Dynamic row-snapped page height so EVERY lineGapPx (14-42px) fills the A4 sheet cleanly
+    // without clipping the bottom row or wasting vertical space
+    const lineGap = Math.max(
+      SHEET_GEOMETRY.MIN_LINE_GAP_PX,
+      Math.round(settings.lineGapPx || exactLineHeightPx)
+    );
+    const topMarginH = settings.showTopMargin
+      ? SHEET_GEOMETRY.TOP_MARGIN_HEIGHT_PX
+      : 0;
+    const contentPadTop =
+      parseFloat(window.getComputedStyle(paperContentEl).paddingTop || '0') || 0;
+    const usableHeight = PAGE_HEIGHT - topMarginH - 14;
+    const maxRows = Math.max(
+      1,
+      Math.floor((usableHeight - contentPadTop) / lineGap)
+    );
+    const maxPageHeight = Math.min(
+      usableHeight,
+      Math.round(contentPadTop + maxRows * lineGap + 3)
+    );
     const totalScrollHeight = paperContentEl.scrollHeight;
 
     if (totalScrollHeight > maxPageHeight && blocks.length > 1) {

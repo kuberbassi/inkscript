@@ -307,14 +307,13 @@ export const App: React.FC = () => {
     paperContentRef.current?.focus();
     const sel = window.getSelection();
     if (sel && sel.toString().length > 0) {
-      document.execCommand('bold', false, undefined);
       document.execCommand('underline', false, undefined);
       document.execCommand('justifyCenter', false, undefined);
     } else {
       document.execCommand(
         'insertHTML',
         false,
-        '<div style="text-align: center;" data-hw-heading="true"><b><u>Heading Title</u></b></div><br/>'
+        '<div style="text-align: center;" data-hw-heading="true"><u>Heading Title</u></div><br/>'
       );
     }
     saveEditorContent();
