@@ -14,7 +14,10 @@ import {
   SHEET_GEOMETRY,
   STORAGE_KEYS
 } from './constants/studioTokens';
-import { generateHandwrittenPages } from './engine/canvasRenderer';
+import {
+  generateHandwrittenPages,
+  renderCurrentSheetToCanvas
+} from './engine/canvasRenderer';
 import {
   htmlToMarkdown,
   parsePlainMarkdownToHandwriting,
@@ -59,10 +62,17 @@ export const App: React.FC = () => {
   const [chipStatus, setChipStatus] = useState<CallChipStatus>('idle');
   const [isDrawOpen, setIsDrawOpen] = useState(false);
   const [isExpandedEditor, setIsExpandedEditor] = useState(false);
+  const [isOverlayReady, setIsOverlayReady] = useState(false);
+  const [isTypingActive, setIsTypingActive] = useState(false);
+  const [previewTick, setPreviewTick] = useState(0);
 
   const pageElRef = useRef<HTMLDivElement | null>(null);
   const paperContentRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const previewCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const typingTimerRef = useRef<number | null>(null);
+  const scrollRafRef = useRef<number | null>(null);
+  const previewRenderSeqRef = useRef(0);
 
   const tokens = useMemo(
     () => getThemeTokens(settings.darkMode),
@@ -89,8 +99,85 @@ export const App: React.FC = () => {
       paperContentRef.current.innerHTML =
         (isLegacySkill ? null : savedContent) || DEFAULT_INITIAL_HTML;
       stripInlineFontOverrides(paperContentRef.current);
+      setPreviewTick((t) => t + 1);
     }
   }, []);
+
+  // Cleanup debounce timers on unmount
+  useEffect(() => {
+    return () => {
+      if (typingTimerRef.current) window.clearTimeout(typingTimerRef.current);
+      if (scrollRafRef.current) window.cancelAnimationFrame(scrollRafRef.current);
+    };
+  }, []);
+
+  const bumpPreviewImmediate = useCallback(() => {
+    if (typingTimerRef.current) {
+      window.clearTimeout(typingTimerRef.current);
+      typingTimerRef.current = null;
+    }
+    setIsTypingActive(false);
+    setPreviewTick((t) => t + 1);
+  }, []);
+
+  // Render Live Realism Preview Overlay (Tier 1 + Tier 2 vector engine directly in Sheet Canvas)
+  useEffect(() => {
+    if (isGenerating || isTypingActive || settings.realismIntensity <= 0) {
+      if (settings.realismIntensity <= 0) {
+        setIsOverlayReady(false);
+      }
+      return;
+    }
+
+    const pageEl = pageElRef.current;
+    const paperEl = paperContentRef.current;
+    const canvasEl = previewCanvasRef.current;
+    if (!pageEl || !paperEl || !canvasEl) return;
+
+    const seq = ++previewRenderSeqRef.current;
+    let cancelled = false;
+
+    const runPreviewRender = async () => {
+      if (document.fonts && document.fonts.ready) {
+        await document.fonts.ready;
+      }
+      if (cancelled || seq !== previewRenderSeqRef.current) return;
+
+      const dpr = Math.min(window.devicePixelRatio || 1.5, 2);
+      await renderCurrentSheetToCanvas(
+        pageEl,
+        paperEl,
+        settings,
+        exactLineHeightPx,
+        settings.realismSeed,
+        {
+          scaleOverride: dpr,
+          scrollTop: pageEl.scrollTop,
+          targetCanvas: canvasEl
+        }
+      );
+      if (!cancelled && seq === previewRenderSeqRef.current) {
+        setIsOverlayReady(true);
+      }
+    };
+
+    const rafId = window.requestAnimationFrame(() => {
+      void runPreviewRender();
+    });
+
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(rafId);
+    };
+  }, [
+    settings,
+    exactLineHeightPx,
+    smartBaselineOffsetPx,
+    isGenerating,
+    isTypingActive,
+    isExpandedEditor,
+    previewTick
+  ]);
 
   // Close expanded editor on Escape key
   useEffect(() => {
@@ -117,18 +204,39 @@ export const App: React.FC = () => {
     }
   }, []);
 
+  const handleEditorInput = useCallback(() => {
+    saveEditorContent();
+    setIsTypingActive(true);
+    if (typingTimerRef.current) {
+      window.clearTimeout(typingTimerRef.current);
+    }
+    typingTimerRef.current = window.setTimeout(() => {
+      setIsTypingActive(false);
+      setPreviewTick((t) => t + 1);
+    }, 360);
+  }, [saveEditorContent]);
+
+  const handlePageScroll = useCallback(() => {
+    if (settings.realismIntensity <= 0 || isTypingActive || isGenerating) return;
+    if (scrollRafRef.current) window.cancelAnimationFrame(scrollRafRef.current);
+    scrollRafRef.current = window.requestAnimationFrame(() => {
+      setPreviewTick((t) => t + 1);
+    });
+  }, [settings.realismIntensity, isTypingActive, isGenerating]);
+
   const handlePaste = useCallback(
     (e: React.ClipboardEvent<HTMLDivElement>) => {
       e.preventDefault();
       const htmlData = e.clipboardData.getData('text/html');
       const plainText = e.clipboardData.getData('text/plain');
 
-      const hasExplicitMarkdown = /(^#{1,6}\s|\*\*.+?\*\*|^\s*[-*]\s+)/m.test(
-        plainText
-      );
+      const hasRichStructure =
+        /<(h[1-4]|table|pre|ul|ol|strong|b|em|i)\b/i.test(htmlData);
+      const hasRawMarkdownSyntax =
+        /(^#{1,6}\s|```|\*\*.+?\*\*|^\s*\|?\s*:?-{2,}:?\s*\|)/m.test(plainText);
 
       let finalHTML = '';
-      if (htmlData && htmlData.trim().length > 0 && !hasExplicitMarkdown) {
+      if (htmlData && htmlData.trim().length > 0 && (hasRichStructure || !hasRawMarkdownSyntax)) {
         finalHTML = sanitizeRichHTMLToHandwriting(htmlData);
       }
       if (!finalHTML) {
@@ -140,8 +248,9 @@ export const App: React.FC = () => {
         stripInlineFontOverrides(paperContentRef.current);
       }
       saveEditorContent();
+      bumpPreviewImmediate();
     },
-    [saveEditorContent]
+    [saveEditorContent, bumpPreviewImmediate]
   );
 
   const handleCopy = useCallback((e: React.ClipboardEvent<HTMLDivElement>) => {
@@ -167,8 +276,9 @@ export const App: React.FC = () => {
       paperContentRef.current?.focus();
       document.execCommand(cmd, false, undefined);
       saveEditorContent();
+      bumpPreviewImmediate();
     },
-    [saveEditorContent]
+    [saveEditorContent, bumpPreviewImmediate]
   );
 
   const handleToolbarInsert = useCallback(
@@ -176,8 +286,9 @@ export const App: React.FC = () => {
       paperContentRef.current?.focus();
       document.execCommand('insertText', false, text);
       saveEditorContent();
+      bumpPreviewImmediate();
     },
-    [saveEditorContent]
+    [saveEditorContent, bumpPreviewImmediate]
   );
 
   const handleToolbarHeading1 = useCallback(() => {
@@ -191,11 +302,12 @@ export const App: React.FC = () => {
       document.execCommand(
         'insertHTML',
         false,
-        '<div style="text-align: center;"><b><u>Heading Title</u></b></div><br/>'
+        '<div style="text-align: center;" data-hw-heading="true"><b><u>Heading Title</u></b></div><br/>'
       );
     }
     saveEditorContent();
-  }, [saveEditorContent]);
+    bumpPreviewImmediate();
+  }, [saveEditorContent, bumpPreviewImmediate]);
 
   const handleAddSketchToPaper = useCallback(
     (dataUrl: string) => {
@@ -205,8 +317,9 @@ export const App: React.FC = () => {
       img.style.maxWidth = '100%';
       paperContentRef.current.appendChild(img);
       saveEditorContent();
+      bumpPreviewImmediate();
     },
-    [saveEditorContent]
+    [saveEditorContent, bumpPreviewImmediate]
   );
 
   const handleGenerate = useCallback(async () => {
@@ -271,12 +384,19 @@ export const App: React.FC = () => {
     exportPagesToPDF(pages);
   }, [pages]);
 
+  const showLiveRealismOverlay =
+    settings.realismIntensity > 0 &&
+    isOverlayReady &&
+    !isTypingActive &&
+    !isGenerating;
+
   const pageClassNames = [
     'page-a',
     settings.showTopMargin ? 'top-margined' : '',
     settings.showLeftMargin ? 'left-margined' : '',
     settings.showRuledLines ? 'lines' : '',
-    settings.customPaperBgUrl ? 'custom-paper-bg' : ''
+    settings.customPaperBgUrl ? 'custom-paper-bg' : '',
+    showLiveRealismOverlay ? 'realism-overlay-active' : ''
   ]
     .filter(Boolean)
     .join(' ');
@@ -435,52 +555,59 @@ export const App: React.FC = () => {
 
                 <div className="flex-1 page-container">
                   <div className="sheet-zoom-stage">
-                    <div
-                      ref={pageElRef}
-                      className={pageClassNames}
-                      style={{
-                        fontSize: `${settings.fontSizePt}pt`,
-                        lineHeight: `${exactLineHeightPx}px`,
-                        wordSpacing: `${settings.wordSpacingPx}px`,
-                        letterSpacing: `${settings.letterSpacingPt}pt`,
-                        backgroundImage: settings.customPaperBgUrl
-                          ? `url("${settings.customPaperBgUrl}")`
-                          : undefined
-                      }}
-                    >
+                    <div className="sheet-canvas-stage">
                       <div
-                        contentEditable
-                        suppressContentEditableWarning
-                        className="top-margin"
-                      />
-                      <div
-                        ref={containerRef}
-                        className="display-flex left-margin-and-content"
+                        ref={pageElRef}
+                        className={pageClassNames}
+                        onScroll={handlePageScroll}
+                        style={{
+                          fontSize: `${settings.fontSizePt}pt`,
+                          lineHeight: `${exactLineHeightPx}px`,
+                          wordSpacing: `${settings.wordSpacingPx}px`,
+                          letterSpacing: `${settings.letterSpacingPt}pt`,
+                          backgroundImage: settings.customPaperBgUrl
+                            ? `url("${settings.customPaperBgUrl}")`
+                            : undefined
+                        }}
                       >
                         <div
                           contentEditable
                           suppressContentEditableWarning
-                          className="left-margin"
+                          className="top-margin"
                         />
                         <div
-                          ref={paperContentRef}
-                          id="note"
-                          className="paper-content"
-                          contentEditable
-                          suppressContentEditableWarning
-                          style={{
-                            paddingTop: `${smartBaselineOffsetPx}px`,
-                            paddingLeft: `${settings.leftPaddingPx}px`,
-                            textShadow:
-                              settings.realismIntensity > 0
-                                ? `${(0.12 * settings.realismIntensity).toFixed(2)}px ${(0.04 * settings.realismIntensity).toFixed(2)}px 0px ${settings.inkColor}`
-                                : undefined
-                          }}
-                          onInput={saveEditorContent}
-                          onPaste={handlePaste}
-                          onCopy={handleCopy}
-                        />
+                          ref={containerRef}
+                          className="display-flex left-margin-and-content"
+                        >
+                          <div
+                            contentEditable
+                            suppressContentEditableWarning
+                            className="left-margin"
+                          />
+                          <div
+                            ref={paperContentRef}
+                            id="note"
+                            className="paper-content"
+                            contentEditable
+                            suppressContentEditableWarning
+                            style={{
+                              paddingTop: `${smartBaselineOffsetPx}px`,
+                              paddingLeft: `${settings.leftPaddingPx}px`
+                            }}
+                            onInput={handleEditorInput}
+                            onPaste={handlePaste}
+                            onCopy={handleCopy}
+                          />
+                        </div>
                       </div>
+                      <canvas
+                        ref={previewCanvasRef}
+                        className="live-realism-overlay"
+                        aria-hidden="true"
+                        style={{
+                          opacity: showLiveRealismOverlay ? 1 : 0
+                        }}
+                      />
                     </div>
                   </div>
                 </div>

@@ -733,7 +733,7 @@ button:disabled {
   justify-content: center;
 }
 
-.page-container-super.expanded-modal-mode .page-a {
+.page-container-super.expanded-modal-mode .sheet-canvas-stage {
   transform: scale(var(--modal-sheet-scale, 1.24));
   transform-origin: top center;
 }
@@ -861,8 +861,8 @@ button:disabled {
 
 .paper-content b,
 .paper-content strong {
-  font-weight: 700;
-  text-shadow: 0 0 0.45px currentColor;
+  font-weight: 500;
+  text-shadow: 0 0 0.22px currentColor;
 }
 
 .paper-content i,
@@ -872,7 +872,7 @@ button:disabled {
 
 .paper-content u {
   text-decoration: underline;
-  text-decoration-thickness: 1.2px;
+  text-decoration-thickness: 1.05px;
   text-underline-offset: 2px;
 }
 
@@ -891,25 +891,103 @@ button:disabled {
   font-size: inherit !important;
 }
 
-/* Handwritten Notebook Tables */
+/* Grid-Locked Handwritten Notebook Tables (exact multiple of --line-height-val so lines never drift) */
 .paper-content table.hw-table {
-  width: calc(100% - 12px);
-  margin: 6px 0;
+  width: calc(100% - 8px);
+  margin: 0;
+  table-layout: fixed;
   border-collapse: collapse;
-  border: 1.25px solid color-mix(in srgb, var(--ink-color) 45%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ink-color) 42%, transparent);
+}
+
+.paper-content table.hw-table tr {
+  height: var(--line-height-val, 21px);
 }
 
 .paper-content table.hw-table th,
 .paper-content table.hw-table td {
-  padding: 2px 7px;
-  border: 1px solid color-mix(in srgb, var(--ink-color) 35%, transparent);
+  padding: 0 6px;
+  height: var(--line-height-val, 21px);
+  border: 1px solid color-mix(in srgb, var(--ink-color) 32%, transparent);
   text-align: left;
   vertical-align: middle;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .paper-content table.hw-table th {
-  font-weight: 700;
-  border-bottom: 1.5px solid color-mix(in srgb, var(--ink-color) 52%, transparent);
+  font-weight: 500;
+  border-bottom: 1.25px solid color-mix(in srgb, var(--ink-color) 48%, transparent);
+}
+
+/* Indentation-Preserving Handwritten Code Blocks */
+.paper-content .hw-code-block {
+  margin: 0;
+  padding: 0;
+  white-space: pre-wrap;
+  tab-size: 2;
+}
+
+.paper-content .hw-code-line {
+  margin: 0;
+  padding: 0;
+  min-height: var(--line-height-val, 21px);
+  white-space: pre-wrap;
+}
+
+/* Live Realism Canvas Overlay (shows exact Tier 1 + Tier 2 realism directly in Sheet Canvas) */
+.sheet-canvas-stage {
+  position: relative;
+  width: 400px;
+  height: calc(11.7 * 400px / 8.3);
+}
+
+.live-realism-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  border-radius: 6px;
+  z-index: 4;
+  mix-blend-mode: multiply;
+  transition: opacity 140ms ease;
+}
+
+.page-a.realism-overlay-active.lines .paper-content,
+.page-a.realism-overlay-active.left-margined {
+  background-image: none !important;
+}
+
+.page-a.realism-overlay-active .top-margin {
+  border-bottom-color: transparent !important;
+}
+
+.page-a.realism-overlay-active .paper-content {
+  color: transparent !important;
+  caret-color: var(--ink-color);
+  text-shadow: none !important;
+}
+
+.page-a.realism-overlay-active .paper-content * {
+  color: transparent !important;
+  text-shadow: none !important;
+  text-decoration-color: transparent !important;
+}
+
+.page-a.realism-overlay-active .paper-content table.hw-table,
+.page-a.realism-overlay-active .paper-content table.hw-table th,
+.page-a.realism-overlay-active .paper-content table.hw-table td {
+  border-color: transparent !important;
+}
+
+.page-a.realism-overlay-active .paper-content img {
+  opacity: 0;
+}
+
+.page-a.realism-overlay-active .paper-content ::selection {
+  background: rgba(59, 130, 246, 0.22);
+  color: transparent;
 }
 
 .paper-content ul,

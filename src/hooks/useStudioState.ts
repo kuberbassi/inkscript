@@ -4,6 +4,7 @@ import {
   SHEET_GEOMETRY,
   STORAGE_KEYS
 } from '../constants/studioTokens';
+import { registerCustomFontBuffer } from '../engine/vectorFontEngine';
 import { SheetPreset, StudioSettings } from '../types/studio';
 
 export function useStudioState() {
@@ -140,6 +141,7 @@ export function useStudioState() {
       const buffer = e.target?.result as ArrayBuffer;
       if (!buffer) return;
       const fontName = `custom-hw-${Date.now()}`;
+      registerCustomFontBuffer(fontName, buffer.slice(0));
       const face = new FontFace(fontName, buffer);
       const loadedFace = await face.load();
       document.fonts.add(loadedFace);

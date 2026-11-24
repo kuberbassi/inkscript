@@ -16,11 +16,13 @@
     "@tailwindcss/vite": "^4.3.3",
     "jspdf": "^2.5.2",
     "motion": "^14.9.0",
+    "opentype.js": "^2.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tailwindcss": "^4.3.3"
   },
   "devDependencies": {
+    "@types/opentype.js": "^1.3.10",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.4",
