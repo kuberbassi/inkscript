@@ -533,13 +533,12 @@ export async function renderCurrentSheetToCanvas(
   const eff = Math.min(2.0, settings.realismIntensity * 0.82);
   const decoRng = new SeededRandom(pageSeed + 7919);
   const baseInkRgb = parseHexColor(settings.inkColor);
-  const contentPadTop =
-    parseFloat(window.getComputedStyle(paperContentEl).paddingTop || '0') || 0;
 
-  const snapYToRuledLine = (yVal: number): number => {
-    if (!settings.showRuledLines || settings.customPaperBgUrl) return yVal;
-    const rowIdx = Math.round((yVal - paperTopInPage - contentPadTop) / lineGap);
-    return paperTopInPage + rowIdx * lineGap - 0.6;
+  // Snaps an actual rendered text baseline Y to the ruled line that the text sits ON
+  const snapBaselineToRuledLine = (baseY: number): number => {
+    if (!settings.showRuledLines || settings.customPaperBgUrl) return baseY;
+    const k = Math.round((baseY + 2 - (paperTopInPage - 0.6)) / lineGap);
+    return paperTopInPage + k * lineGap - 0.6;
   };
 
   const fontSizePx = (settings.fontSizePt * 4) / 3;
@@ -609,13 +608,13 @@ export async function renderCurrentSheetToCanvas(
         if (baselines && settings.showRuledLines && !settings.customPaperBgUrl) {
           // Snap top border to the ruled line strictly ABOVE the row's first text baseline,
           // and bottom border to the ruled line that the row's last text baseline sits ON.
-          const firstLineY = snapYToRuledLine(baselines.minBaseY);
-          const lastLineY = snapYToRuledLine(baselines.maxBaseY);
+          const firstLineY = snapBaselineToRuledLine(baselines.minBaseY);
+          const lastLineY = snapBaselineToRuledLine(baselines.maxBaseY);
           ryTop = firstLineY - lineGap;
           ryBot = Math.max(lastLineY, firstLineY);
         } else {
-          ryTop = snapYToRuledLine((rRect.top - pageRect.top) * scaleFactorY);
-          ryBot = snapYToRuledLine((rRect.bottom - pageRect.top) * scaleFactorY);
+          ryTop = snapBaselineToRuledLine((rRect.top - pageRect.top) * scaleFactorY);
+          ryBot = snapBaselineToRuledLine((rRect.bottom - pageRect.top) * scaleFactorY);
         }
 
         if (rIdx === 0) {
