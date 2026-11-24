@@ -386,9 +386,15 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             <PropSwitchField
               label="Ruled Lines"
               checked={settings.showRuledLines}
-              onToggle={() =>
-                onUpdate({ showRuledLines: !settings.showRuledLines })
-              }
+              onToggle={() => {
+                const nextRuled = !settings.showRuledLines;
+                onUpdate({
+                  showRuledLines: nextRuled,
+                  ...(nextRuled && settings.topPaddingPx === 24
+                    ? { topPaddingPx: 0 }
+                    : {})
+                });
+              }}
             />
           </div>
         </CustomizerCard>
