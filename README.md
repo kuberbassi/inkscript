@@ -29,7 +29,12 @@ You can paste notes directly from ChatGPT, Notion, or Google Docs, tweak the pen
 
 ## Run Locally
 
+Requires **Node.js 18+**.
+
 ```bash
+git clone https://github.com/kuberbassi/inkscript.git
+cd inkscript
+
 # Install dependencies
 npm install
 
